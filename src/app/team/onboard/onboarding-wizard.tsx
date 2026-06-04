@@ -3,9 +3,12 @@
 import { useActionState, useRef, useState } from "react";
 import {
   pickSquadNameAction,
-  uploadTeamPhotoAction,
+  createTeamPhotoUploadUrl,
+  commitTeamPhotoAction,
   type PickNameState,
 } from "./actions";
+import { maybeCompressImage } from "@/lib/image-compress";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 
 const initial: PickNameState = { ok: false, error: null };
 
@@ -67,9 +70,7 @@ export function OnboardingWizard({
             placeholder="bv. Glow Girls"
             className="rounded-2xl border-2 border-border-strong bg-bg-card px-4 py-5 text-center text-2xl font-bold text-fg placeholder:text-fg-dim focus:border-pink focus:outline-none focus:glow-pink"
           />
-          <span className="text-right text-xs text-fg-dim">
-            {name.length}/24
-          </span>
+          <span className="text-right text-xs text-fg-dim">{name.length}/24</span>
         </label>
 
         <div className="flex flex-col gap-2">
@@ -118,25 +119,57 @@ function PhotoStage({
   teamColor: string;
 }) {
   const [preview, setPreview] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    const r = new FileReader();
+    r.onload = () => setPreview(r.result as string);
+    r.readAsDataURL(f);
+  }
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setPreview(reader.result as string);
-    reader.readAsDataURL(file);
+    setError(null);
+    try {
+      setProgress("Foto verkleinen...");
+      const blob = await maybeCompressImage(file);
+      const ext =
+        blob.type === "image/jpeg"
+          ? "jpg"
+          : (file.name.split(".").pop()?.toLowerCase() || "jpg");
+
+      setProgress("Upload-link maken...");
+      const sig = await createTeamPhotoUploadUrl(ext);
+      if (!sig.ok || !sig.path || !sig.token) {
+        throw new Error(sig.error ?? "Geen signed URL");
+      }
+
+      setProgress("Uploaden...");
+      const sb = supabaseBrowser();
+      const { error: upErr } = await sb.storage
+        .from("team-photos")
+        .uploadToSignedUrl(sig.path, sig.token, blob, {
+          contentType: blob.type || "image/jpeg",
+        });
+      if (upErr) throw new Error(upErr.message);
+
+      setProgress("Opslaan...");
+      await commitTeamPhotoAction(sig.path);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload mislukt");
+      setProgress(null);
+    }
   }
 
   return (
-    <form
-      action={async (fd) => {
-        setPending(true);
-        await uploadTeamPhotoAction(fd);
-      }}
-      className="flex flex-col gap-6"
-    >
+    <form onSubmit={onSubmit} className="flex flex-col gap-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-widest text-cyan">
           stap 2 van 2
@@ -157,7 +190,6 @@ function PhotoStage({
         <input
           ref={fileInput}
           type="file"
-          name="photo"
           accept="image/*"
           capture="environment"
           required
@@ -179,12 +211,18 @@ function PhotoStage({
         )}
       </label>
 
+      {error && (
+        <p className="rounded-xl border border-pink/30 bg-pink/10 px-4 py-3 text-sm text-pink-soft">
+          {error}
+        </p>
+      )}
+
       <button
         type="submit"
-        disabled={!preview || pending}
+        disabled={!file || progress !== null}
         className="rounded-2xl bg-pink px-6 py-5 text-lg font-bold text-white transition active:scale-[0.98] disabled:opacity-30"
       >
-        {pending ? "Bezig..." : "Go live"}
+        {progress ?? "Go live"}
       </button>
     </form>
   );

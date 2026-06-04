@@ -52,41 +52,49 @@ export async function pickSquadNameAction(
   return { ok: true };
 }
 
-export async function uploadTeamPhotoAction(formData: FormData) {
-  const teamId = await getTeamSession();
-  if (!teamId) return;
+export type SignedUpload = {
+  ok: boolean;
+  error?: string;
+  signedUrl?: string;
+  path?: string;
+  token?: string;
+};
 
-  const photo = formData.get("photo");
-  if (!(photo instanceof File) || photo.size === 0) return;
+export async function createTeamPhotoUploadUrl(
+  ext: string
+): Promise<SignedUpload> {
+  const teamId = await getTeamSession();
+  if (!teamId) return { ok: false, error: "Niet ingelogd" };
+
+  const safeExt = /^[a-z0-9]{1,5}$/.test(ext) ? ext : "jpg";
+  const path = `${teamId}/channel-${Date.now()}.${safeExt}`;
 
   const sb = supabaseService();
-
-  const ext = photo.name.split(".").pop()?.toLowerCase() || "jpg";
-  const path = `${teamId}/channel-${Date.now()}.${ext}`;
-
-  const { error: uploadError } = await sb.storage
+  const { data, error } = await sb.storage
     .from("team-photos")
-    .upload(path, photo, {
-      contentType: photo.type || "image/jpeg",
-      upsert: false,
-    });
+    .createSignedUploadUrl(path);
 
-  if (uploadError) {
-    throw new Error(`Upload failed: ${uploadError.message}`);
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "kan upload-url niet maken" };
   }
+  return { ok: true, signedUrl: data.signedUrl, path: data.path, token: data.token };
+}
 
+export async function commitTeamPhotoAction(path: string) {
+  const teamId = await getTeamSession();
+  if (!teamId) return;
+  if (!path || typeof path !== "string") return;
+  if (!path.startsWith(`${teamId}/`)) return;
+
+  const sb = supabaseService();
   const {
     data: { publicUrl },
   } = sb.storage.from("team-photos").getPublicUrl(path);
 
-  const { error: updateError } = await sb
+  await sb
     .from("teams")
     .update({ team_photo_url: publicUrl })
     .eq("id", teamId);
-
-  if (updateError) {
-    throw new Error(`Save failed: ${updateError.message}`);
-  }
 
   revalidatePath("/team/map");
   redirect("/team/map");

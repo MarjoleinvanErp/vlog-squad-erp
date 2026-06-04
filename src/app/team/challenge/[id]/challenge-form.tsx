@@ -1,7 +1,13 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { submitChallengeAction, type SubmitState } from "../actions";
+import {
+  submitChallengeAction,
+  createSubmissionUploadUrl,
+  type SubmitState,
+} from "../actions";
+import { maybeCompressImage } from "@/lib/image-compress";
+import { supabaseBrowser } from "@/lib/supabase/browser";
 
 const initial: SubmitState = { ok: false, error: null };
 
@@ -13,6 +19,13 @@ type Task = {
 };
 
 export function ChallengeForm({ task }: { task: Task }) {
+  if (task.type === "photo") {
+    return <PhotoForm task={task} />;
+  }
+  return <NonPhotoForm task={task} />;
+}
+
+function NonPhotoForm({ task }: { task: Task }) {
   const [state, formAction, pending] = useActionState(
     submitChallengeAction,
     initial
@@ -21,7 +34,6 @@ export function ChallengeForm({ task }: { task: Task }) {
   return (
     <form action={formAction} className="flex flex-col gap-5">
       <input type="hidden" name="task_id" value={task.id} />
-      {task.type === "photo" && <PhotoField />}
       {task.type === "text" && <TextField />}
       {task.type === "multiple_choice" && task.options && (
         <MultipleChoiceField choices={task.options.choices} />
@@ -44,44 +56,117 @@ export function ChallengeForm({ task }: { task: Task }) {
   );
 }
 
-function PhotoField() {
+function PhotoForm({ task }: { task: Task }) {
+  const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [isVideo, setIsVideo] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+    setFile(f);
+    setIsVideo(f.type.startsWith("video/"));
     const r = new FileReader();
     r.onload = () => setPreview(r.result as string);
     r.readAsDataURL(f);
   }
 
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!file) return;
+    setError(null);
+    try {
+      setProgress(isVideo ? "Video voorbereiden..." : "Foto verkleinen...");
+      const blob = await maybeCompressImage(file);
+      const guessExt = file.name.split(".").pop()?.toLowerCase();
+      const ext =
+        blob.type === "image/jpeg"
+          ? "jpg"
+          : guessExt && /^[a-z0-9]{1,5}$/.test(guessExt)
+            ? guessExt
+            : "bin";
+
+      setProgress("Upload-link maken...");
+      const sig = await createSubmissionUploadUrl(task.id, ext);
+      if (!sig.ok || !sig.path || !sig.token) {
+        throw new Error(sig.error ?? "Geen signed URL");
+      }
+
+      setProgress("Uploaden...");
+      const sb = supabaseBrowser();
+      const { error: upErr } = await sb.storage
+        .from("submission-photos")
+        .uploadToSignedUrl(sig.path, sig.token, blob, {
+          contentType: blob.type || file.type || "application/octet-stream",
+        });
+      if (upErr) throw new Error(upErr.message);
+
+      setProgress("Posten...");
+      const fd = new FormData();
+      fd.set("task_id", task.id);
+      fd.set("photo_path", sig.path);
+      await submitChallengeAction({ ok: false, error: null }, fd);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload mislukt");
+      setProgress(null);
+    }
+  }
+
   return (
-    <label className="relative block aspect-square cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed border-border-strong bg-bg-card hover:border-pink">
-      <input
-        ref={inputRef}
-        type="file"
-        name="photo"
-        accept="image/*,video/*"
-        capture="environment"
-        required
-        onChange={onChange}
-        className="absolute inset-0 z-10 cursor-pointer opacity-0"
-      />
-      {preview ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={preview}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
+    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+      <label className="relative block aspect-square cursor-pointer overflow-hidden rounded-3xl border-2 border-dashed border-border-strong bg-bg-card hover:border-pink">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*,video/*"
+          capture="environment"
+          required
+          onChange={onChange}
+          className="absolute inset-0 z-10 cursor-pointer opacity-0"
         />
-      ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-fg-muted">
-          <div className="h-16 w-16 rounded-full border-2 border-border-strong" />
-          <span className="text-sm font-semibold">Tap voor foto/video</span>
-        </div>
+        {preview ? (
+          isVideo ? (
+            <video
+              src={preview}
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={preview}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          )
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-fg-muted">
+            <div className="h-16 w-16 rounded-full border-2 border-border-strong" />
+            <span className="text-sm font-semibold">Tap voor foto/video</span>
+          </div>
+        )}
+      </label>
+
+      {error && (
+        <p className="rounded-xl border border-pink/30 bg-pink/10 px-4 py-3 text-sm text-pink-soft">
+          {error}
+        </p>
       )}
-    </label>
+
+      <button
+        type="submit"
+        disabled={!file || progress !== null}
+        className="rounded-2xl bg-pink px-6 py-5 text-lg font-bold text-white transition active:scale-[0.98] disabled:opacity-50"
+      >
+        {progress ?? "Drop post"}
+      </button>
+    </form>
   );
 }
 

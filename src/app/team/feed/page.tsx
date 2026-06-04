@@ -1,24 +1,47 @@
 import Link from "next/link";
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { getTeamSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
 import { TeamBottomNav } from "../bottom-nav";
+import { FeedStream } from "./feed-stream";
+
+type FeedRow = {
+  id: string;
+  status: "pending" | "approved" | "rejected";
+  awarded_points: number | null;
+  photo_url: string | null;
+  text_answer: string | null;
+  submitted_at: string;
+  task_title: string | null;
+  task_type: string | null;
+};
 
 export default async function FeedPage() {
   const teamId = await getTeamSession();
   if (!teamId) redirect("/team");
 
   const sb = supabaseService();
+  const { data: teamData } = await sb
+    .from("teams")
+    .select("name, color, team_photo_url")
+    .eq("id", teamId)
+    .maybeSingle();
+
+  const team = teamData as {
+    name: string;
+    color: string;
+    team_photo_url: string | null;
+  } | null;
+
   const { data } = await sb
     .from("submissions")
     .select(
-      "id, status, awarded_points, photo_url, text_answer, choice_index, submitted_at, tasks(title, type, max_points)"
+      "id, status, awarded_points, photo_url, text_answer, submitted_at, tasks(title, type)"
     )
     .eq("team_id", teamId)
     .order("submitted_at", { ascending: false });
 
-  type FeedRow = {
+  type RawRow = {
     id: string;
     status: "pending" | "approved" | "rejected";
     awarded_points: number | null;
@@ -26,78 +49,59 @@ export default async function FeedPage() {
     text_answer: string | null;
     submitted_at: string;
     tasks:
-      | { title: string; type: string; max_points: number }
-      | { title: string; type: string; max_points: number }[]
+      | { title: string; type: string }
+      | { title: string; type: string }[]
       | null;
   };
 
-  const raw = (data ?? []) as unknown as FeedRow[];
-  const submissions = raw.map((r) => {
-    const task = Array.isArray(r.tasks) ? r.tasks[0] ?? null : r.tasks;
-    return { ...r, tasks: task };
-  });
+  const submissions: FeedRow[] = ((data ?? []) as unknown as RawRow[]).map(
+    (r) => {
+      const task = Array.isArray(r.tasks) ? r.tasks[0] ?? null : r.tasks;
+      return {
+        id: r.id,
+        status: r.status,
+        awarded_points: r.awarded_points,
+        photo_url: r.photo_url,
+        text_answer: r.text_answer,
+        submitted_at: r.submitted_at,
+        task_title: task?.title ?? null,
+        task_type: task?.type ?? null,
+      };
+    }
+  );
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-6 pt-6 pb-24">
-      <Link href="/team/map" className="text-sm text-fg-muted hover:text-fg">
-        ← map
-      </Link>
-      <h1 className="text-3xl font-bold">
-        <span className="text-gradient">Your</span> feed
-      </h1>
+    <main className="relative mx-auto flex min-h-dvh max-w-md flex-col bg-bg">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-bg/90 px-5 py-3 backdrop-blur">
+        <div className="flex items-center gap-2">
+          <Link href="/team/map" className="text-sm text-fg-muted hover:text-fg">
+            ←
+          </Link>
+          <h1 className="text-lg font-bold">
+            <span className="text-gradient">Your</span> feed
+          </h1>
+        </div>
+        {team && (
+          <span className="text-xs font-bold" style={{ color: team.color }}>
+            @{team.name}
+          </span>
+        )}
+      </header>
 
       {submissions.length === 0 ? (
-        <p className="rounded-2xl border border-border bg-bg-card p-6 text-fg-muted">
-          Nog geen posts. Tap een drop op de map en post je eerste.
-        </p>
+        <div className="flex flex-1 items-center justify-center px-8 py-20 text-center">
+          <p className="text-fg-muted">
+            Nog geen posts. Tap een drop op de map of doe een quest.
+          </p>
+        </div>
       ) : (
-        <ul className="flex flex-col gap-3">
-          {submissions.map((s) => (
-            <li
-              key={s.id}
-              className="overflow-hidden rounded-3xl border border-border bg-bg-card"
-            >
-              {s.photo_url && (
-                <div className="relative aspect-square w-full bg-black">
-                  <Image
-                    src={s.photo_url}
-                    alt=""
-                    fill
-                    sizes="(max-width: 480px) 100vw, 480px"
-                    className="object-cover"
-                  />
-                </div>
-              )}
-              <div className="flex flex-col gap-2 p-4">
-                <p className="text-xs uppercase tracking-widest text-fg-muted">
-                  {s.tasks?.title ?? "challenge"}
-                </p>
-                {s.text_answer && (
-                  <p className="whitespace-pre-line text-sm">{s.text_answer}</p>
-                )}
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-fg-dim">
-                    {new Date(s.submitted_at).toLocaleTimeString("nl-NL", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                  {s.status === "approved" && (
-                    <span className="font-bold text-pink">
-                      +{s.awarded_points ?? 0} likes
-                    </span>
-                  )}
-                  {s.status === "pending" && (
-                    <span className="text-yellow-400">in review</span>
-                  )}
-                  {s.status === "rejected" && (
-                    <span className="text-fg-dim">rejected</span>
-                  )}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <FeedStream
+          teamId={teamId}
+          submissions={submissions}
+          teamName={team?.name ?? ""}
+          teamColor={team?.color ?? "#fe2c55"}
+          teamAvatar={team?.team_photo_url ?? null}
+        />
       )}
 
       <TeamBottomNav active="feed" fixed />

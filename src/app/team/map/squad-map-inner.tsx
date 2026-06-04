@@ -61,10 +61,17 @@ export default function SquadMapInner({
 
   useEffect(() => {
     if (!("geolocation" in navigator)) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
+      () => {},
+      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 5_000 }
+    );
+
     const watch = navigator.geolocation.watchPosition(
       (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
       () => {},
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 }
     );
     return () => navigator.geolocation.clearWatch(watch);
   }, []);

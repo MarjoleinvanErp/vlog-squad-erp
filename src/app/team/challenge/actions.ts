@@ -7,6 +7,36 @@ import { getTeamSession } from "@/lib/auth/session";
 
 export type SubmitState = { ok?: boolean; error?: string | null };
 
+export type SignedUpload = {
+  ok: boolean;
+  error?: string;
+  signedUrl?: string;
+  path?: string;
+  token?: string;
+};
+
+export async function createSubmissionUploadUrl(
+  taskId: string,
+  ext: string
+): Promise<SignedUpload> {
+  const teamId = await getTeamSession();
+  if (!teamId) return { ok: false, error: "Niet ingelogd" };
+  if (!taskId) return { ok: false, error: "Geen challenge" };
+
+  const safeExt = /^[a-z0-9]{1,5}$/.test(ext) ? ext : "jpg";
+  const path = `${teamId}/${taskId}-${Date.now()}.${safeExt}`;
+
+  const sb = supabaseService();
+  const { data, error } = await sb.storage
+    .from("submission-photos")
+    .createSignedUploadUrl(path);
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? "kan upload-url niet maken" };
+  }
+  return { ok: true, signedUrl: data.signedUrl, path: data.path, token: data.token };
+}
+
 export async function submitChallengeAction(
   _prev: SubmitState,
   formData: FormData
@@ -68,22 +98,13 @@ export async function submitChallengeAction(
     });
     if (error) return { error: error.message };
   } else if (task.type === "photo") {
-    const photo = formData.get("photo");
-    if (!(photo instanceof File) || photo.size === 0) {
-      return { error: "Voeg een foto/video toe" };
+    const photoPath = String(formData.get("photo_path") ?? "");
+    if (!photoPath || !photoPath.startsWith(`${teamId}/`)) {
+      return { error: "Upload eerst een foto/video" };
     }
-    const ext = photo.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${teamId}/${taskId}-${Date.now()}.${ext}`;
-    const { error: uploadError } = await sb.storage
-      .from("submission-photos")
-      .upload(path, photo, {
-        contentType: photo.type || "image/jpeg",
-        upsert: false,
-      });
-    if (uploadError) return { error: `Upload mislukt: ${uploadError.message}` };
     const {
       data: { publicUrl },
-    } = sb.storage.from("submission-photos").getPublicUrl(path);
+    } = sb.storage.from("submission-photos").getPublicUrl(photoPath);
     const { error } = await sb.from("submissions").insert({
       team_id: teamId,
       task_id: taskId,
@@ -100,9 +121,10 @@ export async function submitChallengeAction(
   }
   revalidatePath("/team/feed");
   revalidatePath("/team/ranking");
+  revalidatePath("/team/quests");
 
   if (task.location_id) {
     redirect(`/team/location/${task.location_id}`);
   }
-  redirect("/team/feed");
+  redirect("/team/quests");
 }

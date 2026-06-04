@@ -38,46 +38,50 @@ export function GPSTracker({
     if (typeof window === "undefined") return;
     if (!("geolocation" in navigator)) return;
 
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
+    const handle = (pos: GeolocationPosition) => {
+      const { latitude, longitude, accuracy } = pos.coords;
 
-        const now = Date.now();
-        if (now - lastSent.current > UPLOAD_THROTTLE_MS) {
-          lastSent.current = now;
-          updateTeamLocationAction(latitude, longitude, accuracy ?? null).catch(
-            () => {}
-          );
-        }
-
-        for (const loc of locations) {
-          if (visited.current.has(loc.id)) continue;
-          if (inFlight.current.has(loc.id)) continue;
-          const dist = haversineDistance(latitude, longitude, loc.lat, loc.lng);
-          if (dist <= loc.radius_meters) {
-            inFlight.current.add(loc.id);
-            recordArrivalAction(loc.id)
-              .then((res) => {
-                if (res.ok) {
-                  visited.current.add(loc.id);
-                  setToastState(res);
-                  router.refresh();
-                  setTimeout(() => setToastState(null), 4000);
-                }
-              })
-              .finally(() => {
-                inFlight.current.delete(loc.id);
-              });
-          }
-        }
-      },
-      () => {},
-      {
-        enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 15000,
+      const now = Date.now();
+      if (now - lastSent.current > UPLOAD_THROTTLE_MS) {
+        lastSent.current = now;
+        updateTeamLocationAction(latitude, longitude, accuracy ?? null).catch(
+          () => {}
+        );
       }
+
+      for (const loc of locations) {
+        if (visited.current.has(loc.id)) continue;
+        if (inFlight.current.has(loc.id)) continue;
+        const dist = haversineDistance(latitude, longitude, loc.lat, loc.lng);
+        if (dist <= loc.radius_meters) {
+          inFlight.current.add(loc.id);
+          recordArrivalAction(loc.id)
+            .then((res) => {
+              if (res.ok) {
+                visited.current.add(loc.id);
+                setToastState(res);
+                router.refresh();
+                setTimeout(() => setToastState(null), 4000);
+              }
+            })
+            .finally(() => {
+              inFlight.current.delete(loc.id);
+            });
+        }
+      }
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      handle,
+      () => {},
+      { enableHighAccuracy: false, maximumAge: 60_000, timeout: 5_000 }
     );
+
+    const watchId = navigator.geolocation.watchPosition(handle, () => {}, {
+      enableHighAccuracy: true,
+      maximumAge: 5_000,
+      timeout: 15_000,
+    });
 
     return () => navigator.geolocation.clearWatch(watchId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
