@@ -56,28 +56,34 @@ export default async function LocationPage({
     arrival_points: number;
   };
 
-  const [{ data: tasksData }, { data: subsData }] = await Promise.all([
-    sb
-      .from("tasks")
-      .select("*")
-      .eq("location_id", id)
-      .order("sort_order"),
-    sb
-      .from("submissions")
-      .select("task_id, status, awarded_points")
-      .eq("team_id", teamId),
-  ]);
+  const [{ data: tasksData }, { data: subsData }, { data: visitData }] =
+    await Promise.all([
+      sb.from("tasks").select("*").eq("location_id", id).order("sort_order"),
+      sb
+        .from("submissions")
+        .select("task_id, status, awarded_points")
+        .eq("team_id", teamId),
+      sb
+        .from("location_visits")
+        .select("id, arrived_at, order_position, bonus_awarded")
+        .eq("team_id", teamId)
+        .eq("location_id", id)
+        .maybeSingle(),
+    ]);
 
   const tasks = (tasksData ?? []) as TaskRow[];
   const subs = (subsData ?? []) as SubmissionRow[];
   const subByTask = new Map(subs.map((s) => [s.task_id, s]));
+  const visit = visitData as {
+    arrived_at: string;
+    order_position: number;
+    bonus_awarded: number;
+  } | null;
+  const arrived = !!visit;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-6 pt-6 pb-10">
-      <Link
-        href="/team/map"
-        className="text-sm text-fg-muted hover:text-fg"
-      >
+      <Link href="/team/map" className="text-sm text-fg-muted hover:text-fg">
         ← map
       </Link>
 
@@ -89,10 +95,32 @@ export default async function LocationPage({
         {loc.description && (
           <p className="mt-2 text-fg-muted">{loc.description}</p>
         )}
-        <p className="mt-2 text-xs text-fg-dim">
-          +{loc.arrival_points} likes bij aankomst
-        </p>
+        {arrived ? (
+          <p className="mt-3 inline-block rounded-full bg-cyan/15 px-3 py-1 text-xs font-bold text-cyan">
+            ✓ aangekomen
+            {visit?.order_position
+              ? ` · ${visit.order_position}e team · +${visit.bonus_awarded} likes`
+              : ""}
+          </p>
+        ) : (
+          <p className="mt-2 text-xs text-fg-dim">
+            +{loc.arrival_points} likes bij aankomst
+          </p>
+        )}
       </header>
+
+      {!arrived && (
+        <section className="rounded-2xl border-2 border-yellow-400/40 bg-yellow-400/5 p-4">
+          <p className="text-sm font-bold text-yellow-300">
+            Loop eerst naar deze plek
+          </p>
+          <p className="mt-1 text-sm text-fg-muted">
+            Zodra je squad binnen de radius staat (en GPS aan staat) wordt de
+            arrival automatisch geregistreerd. Daarna kun je hier challenges
+            indienen.
+          </p>
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
         <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
@@ -108,6 +136,7 @@ export default async function LocationPage({
             const done = sub?.status === "approved";
             const pending = sub?.status === "pending";
             const rejected = sub?.status === "rejected";
+            const locked = !arrived;
 
             const inner = (
               <div
@@ -116,7 +145,9 @@ export default async function LocationPage({
                     ? "border-cyan/40 bg-cyan/5"
                     : rejected
                       ? "border-fg-dim/30 bg-bg-card opacity-70"
-                      : "border-border-strong bg-bg-card hover:border-pink"
+                      : locked
+                        ? "border-border bg-bg-card opacity-50"
+                        : "border-border-strong bg-bg-card hover:border-pink"
                 }`}
               >
                 <div className="min-w-0 flex-1">
@@ -144,13 +175,17 @@ export default async function LocationPage({
                   {pending && <p className="text-yellow-400">in review</p>}
                   {rejected && <p className="text-fg-dim">rejected</p>}
                   {!sub && t.type !== "arrival" && (
-                    <p className="font-bold text-pink">start →</p>
+                    <p
+                      className={`font-bold ${locked ? "text-fg-dim" : "text-pink"}`}
+                    >
+                      {locked ? "vergrendeld" : "start →"}
+                    </p>
                   )}
                 </div>
               </div>
             );
 
-            if (t.type === "arrival" || sub) {
+            if (t.type === "arrival" || sub || locked) {
               return <div key={t.id}>{inner}</div>;
             }
             return (

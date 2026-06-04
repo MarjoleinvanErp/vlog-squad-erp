@@ -17,6 +17,7 @@ type Loc = {
 };
 
 const UPLOAD_THROTTLE_MS = 25_000;
+const MAX_ARRIVAL_ACCURACY_M = 50;
 
 export function GPSTracker({
   enabled,
@@ -47,6 +48,13 @@ export function GPSTracker({
         updateTeamLocationAction(latitude, longitude, accuracy ?? null).catch(
           () => {}
         );
+      }
+
+      // Skip arrival-detection als GPS-nauwkeurigheid te laag is
+      // (typisch op desktop/IP-geolocatie of slechte mobiele GPS).
+      // Voorkomt false positives binnen Erp waar locaties dicht bij elkaar liggen.
+      if (accuracy != null && accuracy > MAX_ARRIVAL_ACCURACY_M) {
+        return;
       }
 
       for (const loc of locations) {

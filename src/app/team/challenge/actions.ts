@@ -71,6 +71,22 @@ export async function submitChallengeAction(
     .maybeSingle();
   if (existing) return { error: "Je hebt deze challenge al ingediend" };
 
+  // Anti-cheat: challenges met een locatie kunnen alleen ingediend worden
+  // nadat de squad daar daadwerkelijk via GPS is aangekomen.
+  if (task.location_id) {
+    const { data: visit } = await sb
+      .from("location_visits")
+      .select("id")
+      .eq("team_id", teamId)
+      .eq("location_id", task.location_id)
+      .maybeSingle();
+    if (!visit) {
+      return {
+        error: "Je moet eerst op deze locatie aankomen (loop er heen)",
+      };
+    }
+  }
+
   if (task.type === "multiple_choice") {
     const choiceIndex = Number(formData.get("choice_index") ?? -1);
     if (!task.options || choiceIndex < 0 || choiceIndex >= task.options.choices.length) {
