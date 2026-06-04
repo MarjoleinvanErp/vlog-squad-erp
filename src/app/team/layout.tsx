@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { getTeamSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
 import { GPSTracker } from "./gps-tracker";
+import { SOSButton } from "./sos-button";
 
 type Loc = {
   id: string;
@@ -54,6 +55,7 @@ export default async function TeamLayout({
         initialVisited={visited}
       />
       {children}
+      {teamId && <SOSButton />}
     </>
   );
 }

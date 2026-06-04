@@ -21,6 +21,11 @@ export function LiveRefresh() {
         { event: "*", schema: "public", table: "location_visits" },
         () => router.refresh()
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "incidents" },
+        () => router.refresh()
+      )
       .subscribe();
 
     return () => {
