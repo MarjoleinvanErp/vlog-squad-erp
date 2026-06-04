@@ -67,7 +67,7 @@ export default async function TeamMapPage() {
 
   return (
     <main className="flex h-dvh flex-col bg-bg text-fg">
-      <header className="z-10 flex items-center justify-between gap-3 border-b border-border bg-bg/90 px-4 py-3 backdrop-blur">
+      <header className="z-10 flex items-center justify-between gap-3 border-b border-border bg-bg/90 px-4 pb-3 pt-[calc(0.75rem+var(--st))] backdrop-blur">
         <Link
           href={`/team/squad`}
           className="flex min-w-0 items-center gap-3"

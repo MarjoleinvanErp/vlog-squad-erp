@@ -11,7 +11,7 @@ export function AdminShell({
   children: ReactNode;
 }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 px-6 pt-8 pb-16">
+    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 px-6 pb-16 pt-[calc(2rem+var(--st))]">
       <header className="flex items-center justify-between">
         <div>
           <p className="text-xs uppercase tracking-widest text-pink">{badge}</p>

@@ -72,7 +72,7 @@ export default async function FeedPage() {
 
   return (
     <main className="relative mx-auto flex min-h-dvh max-w-md flex-col bg-bg">
-      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-bg/90 px-5 py-3 backdrop-blur">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-bg/90 px-5 pb-3 pt-[calc(0.75rem+var(--st))] backdrop-blur">
         <div className="flex items-center gap-2">
           <Link href="/team/map" className="text-sm text-fg-muted hover:text-fg">
             ←

@@ -71,7 +71,7 @@ export default async function OuderMapPage() {
 
   return (
     <main className="flex h-dvh flex-col bg-bg text-fg">
-      <header className="z-10 flex items-center justify-between gap-3 border-b border-border bg-bg/90 px-4 py-3 backdrop-blur">
+      <header className="z-10 flex items-center justify-between gap-3 border-b border-border bg-bg/90 px-4 pb-3 pt-[calc(0.75rem+var(--st))] backdrop-blur">
         <div className="min-w-0">
           <p className="text-[10px] uppercase tracking-widest text-cyan">
             live map

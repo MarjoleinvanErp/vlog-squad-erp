@@ -3,7 +3,7 @@ import { TeamLoginForm } from "./team-login-form";
 
 export default function TeamPage() {
   return (
-    <main className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pt-12 pb-10">
+    <main className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pb-10 pt-[calc(3rem+var(--st))]">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[50vh] bg-[radial-gradient(ellipse_at_top,rgba(254,44,85,0.4),transparent_60%)]"

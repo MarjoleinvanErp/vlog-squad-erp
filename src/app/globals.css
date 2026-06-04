@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  --st: env(safe-area-inset-top);
+  --sb: env(safe-area-inset-bottom);
   --bg: #0a0a0a;
   --bg-card: #161616;
   --bg-elev: #222222;

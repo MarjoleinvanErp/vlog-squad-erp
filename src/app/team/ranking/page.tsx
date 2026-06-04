@@ -65,7 +65,7 @@ export default async function RankingPage() {
 
   return (
     <main
-      className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-6 pt-6"
+      className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-6 pt-[calc(1.5rem+var(--st))]"
       style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}
     >
       <Link href="/team/map" className="text-sm text-fg-muted hover:text-fg">

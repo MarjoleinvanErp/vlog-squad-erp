@@ -82,7 +82,7 @@ export default async function LocationPage({
   const arrived = !!visit;
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-6 pt-6 pb-10">
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-6 pb-10 pt-[calc(1.5rem+var(--st))]">
       <Link href="/team/map" className="text-sm text-fg-muted hover:text-fg">
         ← map
       </Link>

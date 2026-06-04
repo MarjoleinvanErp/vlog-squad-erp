@@ -174,7 +174,7 @@ export default async function OuderDashboardPage() {
     );
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-6 pt-8 pb-10">
+    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-6 pb-10 pt-[calc(2rem+var(--st))]">
       <LiveRefresh />
 
       <header className="flex items-center justify-between">

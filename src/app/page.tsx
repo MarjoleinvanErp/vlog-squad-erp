@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pt-20 pb-10">
+    <main className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pb-10 pt-[calc(5rem+var(--st))]">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[60vh] bg-[radial-gradient(ellipse_at_top,rgba(254,44,85,0.35),transparent_60%)]"
