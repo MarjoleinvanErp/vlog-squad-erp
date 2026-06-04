@@ -72,45 +72,44 @@ export async function resetTestDataAction(
   let incCount = 0;
 
   if (teamIds.length > 0) {
-    const { count: c1 } = await sb
-      .from("submissions")
-      .delete({ count: "exact" })
-      .in("team_id", teamIds);
-    subCount = c1 ?? 0;
+    const [r1, r2, r3, r4] = await Promise.all([
+      sb.from("submissions").delete({ count: "exact" }).in("team_id", teamIds),
+      sb
+        .from("location_visits")
+        .delete({ count: "exact" })
+        .in("team_id", teamIds),
+      sb
+        .from("team_locations")
+        .delete({ count: "exact" })
+        .in("team_id", teamIds),
+      sb.from("incidents").delete({ count: "exact" }).in("team_id", teamIds),
+    ]);
+    subCount = r1.count ?? 0;
+    visitCount = r2.count ?? 0;
+    posCount = r3.count ?? 0;
+    incCount = r4.count ?? 0;
 
-    const { count: c2 } = await sb
-      .from("location_visits")
-      .delete({ count: "exact" })
-      .in("team_id", teamIds);
-    visitCount = c2 ?? 0;
-
-    const { count: c3 } = await sb
-      .from("team_locations")
-      .delete({ count: "exact" })
-      .in("team_id", teamIds);
-    posCount = c3 ?? 0;
-
-    const { count: c4 } = await sb
-      .from("incidents")
-      .delete({ count: "exact" })
-      .in("team_id", teamIds);
-    incCount = c4 ?? 0;
-
-    // Reset squad names + channel art sequentially to avoid unique conflicts.
-    // First pass: tijdelijke unieke namen
-    for (let i = 0; i < teams.length; i++) {
-      await sb
-        .from("teams")
-        .update({ name: `__reset_${i}_${Date.now()}`, team_photo_url: null })
-        .eq("id", teams[i].id);
-    }
-    // Tweede pass: definitieve placeholders
-    for (let i = 0; i < teams.length; i++) {
-      await sb
-        .from("teams")
-        .update({ name: `Squad ${i + 1}` })
-        .eq("id", teams[i].id);
-    }
+    // Two-pass team rename om unique-conflicts te vermijden, parallel binnen elke pass.
+    const stamp = Date.now();
+    await Promise.all(
+      teams.map((t, i) =>
+        sb
+          .from("teams")
+          .update({
+            name: `__reset_${i}_${stamp}`,
+            team_photo_url: null,
+          })
+          .eq("id", t.id)
+      )
+    );
+    await Promise.all(
+      teams.map((t, i) =>
+        sb
+          .from("teams")
+          .update({ name: `Squad ${i + 1}` })
+          .eq("id", t.id)
+      )
+    );
   }
 
   revalidatePath("/admin/event");
