@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
@@ -24,6 +25,7 @@ export default async function AdminLocationsPage() {
     .from("locations")
     .select("*")
     .eq("event_id", eventId)
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
   const locations = (data ?? []) as Loc[];
@@ -40,9 +42,12 @@ export default async function AdminLocationsPage() {
             {locations.map((l) => (
               <li
                 key={l.id}
-                className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
               >
-                <div className="min-w-0">
+                <Link
+                  href={`/admin/locations/${l.id}`}
+                  className="min-w-0 flex-1 rounded-lg px-2 py-1 -mx-2 transition hover:bg-bg-elev"
+                >
                   <p className="font-bold">{l.name}</p>
                   <p className="font-mono text-xs text-fg-muted">
                     {l.lat.toFixed(5)}, {l.lng.toFixed(5)} · {l.radius_meters}m ·{" "}
@@ -53,7 +58,7 @@ export default async function AdminLocationsPage() {
                       {l.description}
                     </p>
                   )}
-                </div>
+                </Link>
                 <form action={deleteLocationAction}>
                   <input type="hidden" name="id" value={l.id} />
                   <button type="submit" className={buttonDanger}>
@@ -63,6 +68,11 @@ export default async function AdminLocationsPage() {
               </li>
             ))}
           </ul>
+        )}
+        {locations.length > 0 && (
+          <p className="mt-3 text-xs text-fg-dim">
+            Tap een locatie om te wijzigen.
+          </p>
         )}
       </Card>
 
