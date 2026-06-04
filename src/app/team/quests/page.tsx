@@ -64,7 +64,10 @@ export default async function QuestsPage() {
   const done = tasks.filter((t) => subByTask.has(t.id));
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-6 pt-6 pb-24">
+    <main
+      className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-6 pt-6"
+      style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}
+    >
       <header>
         <p className="text-xs font-semibold uppercase tracking-widest text-cyan">
           anywhere

@@ -64,7 +64,10 @@ export default async function RankingPage() {
   squads.sort((a, b) => b.likes - a.likes);
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-6 pt-6 pb-24">
+    <main
+      className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-6 pt-6"
+      style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}
+    >
       <Link href="/team/map" className="text-sm text-fg-muted hover:text-fg">
         ← map
       </Link>

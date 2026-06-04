@@ -16,18 +16,22 @@ export function TeamBottomNav({
   active: TeamTab;
   fixed?: boolean;
 }) {
-  const base =
-    "grid grid-cols-4 border-t border-border bg-bg-card";
+  const base = "grid grid-cols-4 border-t border-border bg-bg-card";
   const cls = fixed
-    ? `${base} fixed inset-x-0 bottom-0 mx-auto max-w-md`
+    ? `${base} fixed inset-x-0 bottom-0 mx-auto max-w-md z-30`
     : base;
   return (
-    <nav className={cls}>
+    <nav
+      className={cls}
+      style={{
+        paddingBottom: "max(env(safe-area-inset-bottom), 8px)",
+      }}
+    >
       {ITEMS.map((it) => (
         <Link
           key={it.key}
           href={it.href}
-          className={`py-4 text-center text-xs font-bold uppercase tracking-widest ${
+          className={`py-5 text-center text-xs font-bold uppercase tracking-widest ${
             active === it.key ? "text-pink" : "text-fg-muted hover:text-fg"
           }`}
         >

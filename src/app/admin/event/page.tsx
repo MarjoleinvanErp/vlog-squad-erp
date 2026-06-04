@@ -3,6 +3,7 @@ import { getAdminSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
 import { AdminShell, Card } from "../admin-layout";
 import { EventForm } from "./event-form";
+import { ResetSection } from "./reset-section";
 
 export default async function AdminEventPage() {
   const eventId = await getAdminSession();
@@ -32,6 +33,10 @@ export default async function AdminEventPage() {
     <AdminShell title="Event-instellingen">
       <Card>
         <EventForm event={event} />
+      </Card>
+      <Card>
+        <h2 className="mb-3 text-lg font-bold">Reset voor test-run</h2>
+        <ResetSection />
       </Card>
     </AdminShell>
   );

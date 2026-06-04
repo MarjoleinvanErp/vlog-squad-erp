@@ -66,7 +66,10 @@ export function FeedStream({
   }, [teamId, router]);
 
   return (
-    <div className="flex flex-col gap-4 px-3 pt-3 pb-24">
+    <div
+      className="flex flex-col gap-4 px-3 pt-3"
+      style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}
+    >
       <AnimatePresence initial={false}>
         {submissions.map((s, i) => (
           <motion.article
