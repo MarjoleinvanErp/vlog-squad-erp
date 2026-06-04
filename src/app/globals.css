@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0a;
+  --bg-card: #161616;
+  --bg-elev: #222222;
+  --fg: #ffffff;
+  --fg-muted: #a3a3a3;
+  --fg-dim: #6b6b6b;
+  --pink: #fe2c55;
+  --pink-soft: #ff5577;
+  --pink-deep: #c8123a;
+  --cyan: #25f4ee;
+  --cyan-soft: #6ff7f2;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-card: var(--bg-card);
+  --color-bg-elev: var(--bg-elev);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-dim: var(--fg-dim);
+  --color-pink: var(--pink);
+  --color-pink-soft: var(--pink-soft);
+  --color-pink-deep: var(--pink-deep);
+  --color-cyan: var(--cyan);
+  --color-cyan-soft: var(--cyan-soft);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --font-sans: var(--font-display, system-ui), system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+body {
+  font-family: var(--font-display, system-ui), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+@utility text-gradient {
+  background: linear-gradient(135deg, var(--pink) 0%, var(--cyan) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@utility bg-gradient-tiktok {
+  background: linear-gradient(135deg, var(--pink) 0%, var(--cyan) 100%);
+}
+
+@utility glow-pink {
+  box-shadow: 0 0 32px -8px var(--pink);
+}
+
+@utility glow-cyan {
+  box-shadow: 0 0 24px -6px var(--cyan);
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(254, 44, 85, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(254, 44, 85, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(254, 44, 85, 0);
+  }
+}
+
+@utility pulse-pink {
+  animation: pulse-ring 1.6s ease-out infinite;
+}
