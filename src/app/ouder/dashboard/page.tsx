@@ -7,6 +7,7 @@ import { LiveRefresh } from "./live-refresh";
 import { acknowledgeIncidentAction } from "./incident-actions";
 import { OuderPushToggle } from "./push-toggle";
 import { AnnounceSection, type EventRally } from "./announce-section";
+import { OuderPushBanner } from "./push-banner";
 
 const TYPE_LABEL = {
   photo: "Drop",
@@ -216,6 +217,8 @@ export default async function OuderDashboardPage() {
           </Link>
         </div>
       </header>
+
+      <OuderPushBanner />
 
       <section
         className={`rounded-3xl border p-5 ${

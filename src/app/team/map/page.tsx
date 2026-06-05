@@ -4,6 +4,7 @@ import { getTeamSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
 import { SquadMap } from "./squad-map";
 import { TeamBottomNav } from "../bottom-nav";
+import { PushBanner } from "../push-banner";
 
 export default async function TeamMapPage() {
   const teamId = await getTeamSession();
@@ -99,6 +100,8 @@ export default async function TeamMapPage() {
           <span className="text-xs text-fg-muted">likes</span>
         </div>
       </header>
+
+      <PushBanner />
 
       <div className="relative min-h-0 flex-1">
         {locations.length === 0 ? (
