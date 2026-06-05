@@ -54,7 +54,7 @@ export async function submitChallengeAction(
 
   const { data: taskData } = await sb
     .from("tasks")
-    .select("*")
+    .select("*, events!inner(state)")
     .eq("id", taskId)
     .maybeSingle();
   if (!taskData) return { error: "Challenge niet gevonden" };
@@ -64,7 +64,16 @@ export async function submitChallengeAction(
     max_points: number;
     options: { choices: string[]; correct: number } | null;
     location_id: string | null;
+    events:
+      | { state: string }
+      | { state: string }[];
   };
+  const eventState = Array.isArray(task.events)
+    ? task.events[0]?.state
+    : task.events?.state;
+  if (eventState === "paused") {
+    return { error: "Het spel is gestopt — wacht op de ouders" };
+  }
 
   const { data: existing } = await sb
     .from("submissions")

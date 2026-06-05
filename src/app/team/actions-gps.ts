@@ -49,7 +49,7 @@ export async function recordArrivalAction(
 
   const { data: locData } = await sb
     .from("locations")
-    .select("*")
+    .select("*, events!inner(state)")
     .eq("id", locationId)
     .maybeSingle();
   if (!locData) return { ok: false };
@@ -59,7 +59,12 @@ export async function recordArrivalAction(
     bonus_first: number;
     bonus_second: number;
     bonus_third: number;
+    events: { state: string } | { state: string }[];
   };
+  const eventState = Array.isArray(loc.events)
+    ? loc.events[0]?.state
+    : loc.events?.state;
+  if (eventState === "paused") return { ok: false };
 
   const { count } = await sb
     .from("location_visits")

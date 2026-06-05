@@ -6,6 +6,7 @@ import { supabaseService } from "@/lib/supabase/server";
 import { LiveRefresh } from "./live-refresh";
 import { acknowledgeIncidentAction } from "./incident-actions";
 import { OuderPushToggle } from "./push-toggle";
+import { AnnounceSection, type EventRally } from "./announce-section";
 
 const TYPE_LABEL = {
   photo: "Drop",
@@ -39,7 +40,23 @@ export default async function OuderDashboardPage() {
     .eq("id", eventId)
     .maybeSingle();
   if (!eventData) redirect("/ouder");
-  const event = eventData as { name: string };
+  const event = eventData as {
+    name: string;
+    state?: string;
+    rally_message?: string | null;
+    rally_lat?: number | null;
+    rally_lng?: number | null;
+    paused_at?: string | null;
+  };
+  const rally: EventRally = {
+    state: (event.state === "paused" ? "paused" : "running") as
+      | "paused"
+      | "running",
+    rally_message: event.rally_message ?? null,
+    rally_lat: event.rally_lat ?? null,
+    rally_lng: event.rally_lng ?? null,
+    paused_at: event.paused_at ?? null,
+  };
 
   const { data: teamsData } = await sb
     .from("teams")
@@ -199,6 +216,16 @@ export default async function OuderDashboardPage() {
           </Link>
         </div>
       </header>
+
+      <section
+        className={`rounded-3xl border p-5 ${
+          rally.state === "paused"
+            ? "border-pink/50 bg-pink/5"
+            : "border-border bg-bg-card"
+        }`}
+      >
+        <AnnounceSection event={rally} />
+      </section>
 
       {(sosIncidents.length > 0 || inactiveSquads.length > 0) && (
         <section className="space-y-3 rounded-3xl border-2 border-red-500/50 bg-red-500/10 p-5">
