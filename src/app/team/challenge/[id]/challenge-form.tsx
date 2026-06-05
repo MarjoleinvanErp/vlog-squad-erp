@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   submitChallengeAction,
   createSubmissionUploadUrl,
@@ -9,7 +10,7 @@ import {
 import { maybeCompressImage } from "@/lib/image-compress";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
-const initial: SubmitState = { ok: false, error: null };
+const initial: SubmitState = { ok: false, error: null, redirect: null };
 
 type Task = {
   id: string;
@@ -26,10 +27,17 @@ export function ChallengeForm({ task }: { task: Task }) {
 }
 
 function NonPhotoForm({ task }: { task: Task }) {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(
     submitChallengeAction,
     initial
   );
+
+  useEffect(() => {
+    if (state.redirect) {
+      router.push(state.redirect);
+    }
+  }, [state.redirect, router]);
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
@@ -57,6 +65,7 @@ function NonPhotoForm({ task }: { task: Task }) {
 }
 
 function PhotoForm({ task }: { task: Task }) {
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [isVideo, setIsVideo] = useState(false);
@@ -78,6 +87,8 @@ function PhotoForm({ task }: { task: Task }) {
     e.preventDefault();
     if (!file) return;
     setError(null);
+
+    let uploadedPath: string;
     try {
       setProgress(isVideo ? "Video voorbereiden..." : "Foto verkleinen...");
       const blob = await maybeCompressImage(file);
@@ -104,14 +115,26 @@ function PhotoForm({ task }: { task: Task }) {
         });
       if (upErr) throw new Error(upErr.message);
 
-      setProgress("Posten...");
-      const fd = new FormData();
-      fd.set("task_id", task.id);
-      fd.set("photo_path", sig.path);
-      await submitChallengeAction({ ok: false, error: null }, fd);
+      uploadedPath = sig.path;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload mislukt");
       setProgress(null);
+      return;
+    }
+
+    setProgress("Posten...");
+    const fd = new FormData();
+    fd.set("task_id", task.id);
+    fd.set("photo_path", uploadedPath);
+
+    const result = await submitChallengeAction(initial, fd);
+    if (result?.error) {
+      setError(result.error);
+      setProgress(null);
+      return;
+    }
+    if (result?.redirect) {
+      router.push(result.redirect);
     }
   }
 

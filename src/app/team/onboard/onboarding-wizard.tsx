@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   pickSquadNameAction,
   createTeamPhotoUploadUrl,
@@ -118,6 +119,7 @@ function PhotoStage({
   squadName: string;
   teamColor: string;
 }) {
+  const router = useRouter();
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
@@ -137,13 +139,15 @@ function PhotoStage({
     e.preventDefault();
     if (!file) return;
     setError(null);
+
+    let uploadedPath: string;
     try {
       setProgress("Foto verkleinen...");
       const blob = await maybeCompressImage(file);
       const ext =
         blob.type === "image/jpeg"
           ? "jpg"
-          : (file.name.split(".").pop()?.toLowerCase() || "jpg");
+          : file.name.split(".").pop()?.toLowerCase() || "jpg";
 
       setProgress("Upload-link maken...");
       const sig = await createTeamPhotoUploadUrl(ext);
@@ -160,11 +164,22 @@ function PhotoStage({
         });
       if (upErr) throw new Error(upErr.message);
 
-      setProgress("Opslaan...");
-      await commitTeamPhotoAction(sig.path);
+      uploadedPath = sig.path;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload mislukt");
       setProgress(null);
+      return;
+    }
+
+    setProgress("Opslaan...");
+    const result = await commitTeamPhotoAction(uploadedPath);
+    if (!result.ok) {
+      setError(result.error ?? "Opslaan mislukt");
+      setProgress(null);
+      return;
+    }
+    if (result.redirect) {
+      router.push(result.redirect);
     }
   }
 

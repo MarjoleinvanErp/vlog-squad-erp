@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseService } from "@/lib/supabase/server";
 import { getTeamSession } from "@/lib/auth/session";
@@ -80,22 +79,28 @@ export async function createTeamPhotoUploadUrl(
   return { ok: true, signedUrl: data.signedUrl, path: data.path, token: data.token };
 }
 
-export async function commitTeamPhotoAction(path: string) {
+export async function commitTeamPhotoAction(
+  path: string
+): Promise<{ ok: boolean; redirect?: string; error?: string }> {
   const teamId = await getTeamSession();
-  if (!teamId) return;
-  if (!path || typeof path !== "string") return;
-  if (!path.startsWith(`${teamId}/`)) return;
+  if (!teamId) return { ok: false, error: "Niet ingelogd" };
+  if (!path || typeof path !== "string")
+    return { ok: false, error: "Geen pad" };
+  if (!path.startsWith(`${teamId}/`))
+    return { ok: false, error: "Ongeldig pad" };
 
   const sb = supabaseService();
   const {
     data: { publicUrl },
   } = sb.storage.from("team-photos").getPublicUrl(path);
 
-  await sb
+  const { error } = await sb
     .from("teams")
     .update({ team_photo_url: publicUrl })
     .eq("id", teamId);
 
+  if (error) return { ok: false, error: error.message };
+
   revalidatePath("/team/map");
-  redirect("/team/map");
+  return { ok: true, redirect: "/team/map" };
 }

@@ -1,11 +1,14 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseService } from "@/lib/supabase/server";
 import { getTeamSession } from "@/lib/auth/session";
 
-export type SubmitState = { ok?: boolean; error?: string | null };
+export type SubmitState = {
+  ok?: boolean;
+  error?: string | null;
+  redirect?: string | null;
+};
 
 export type SignedUpload = {
   ok: boolean;
@@ -139,8 +142,11 @@ export async function submitChallengeAction(
   revalidatePath("/team/ranking");
   revalidatePath("/team/quests");
 
-  if (task.location_id) {
-    redirect(`/team/location/${task.location_id}`);
-  }
-  redirect("/team/quests");
+  return {
+    ok: true,
+    error: null,
+    redirect: task.location_id
+      ? `/team/location/${task.location_id}`
+      : "/team/quests",
+  };
 }
