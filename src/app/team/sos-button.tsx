@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { reportSOSAction } from "./actions-sos";
+import { vibrateSos } from "@/lib/sound";
 
 type Stage = "idle" | "confirm" | "sending" | "done" | "error";
 
@@ -32,6 +33,7 @@ export function SOSButton() {
       pos?.coords.longitude ?? null
     );
     if (res.ok) {
+      vibrateSos();
       setStage("done");
       setTimeout(() => setStage("idle"), 4000);
     } else {

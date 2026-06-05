@@ -8,6 +8,7 @@ import {
   type ArrivalResult,
 } from "./actions-gps";
 import { haversineDistance } from "@/lib/geo";
+import { playArrivalChime, vibrateArrival } from "@/lib/sound";
 
 type Loc = {
   id: string;
@@ -68,6 +69,8 @@ export function GPSTracker({
               if (res.ok) {
                 visited.current.add(loc.id);
                 setToastState(res);
+                playArrivalChime();
+                vibrateArrival();
                 router.refresh();
                 setTimeout(() => setToastState(null), 4000);
               }

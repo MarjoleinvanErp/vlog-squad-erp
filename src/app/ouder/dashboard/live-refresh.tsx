@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { playSosAlarm, vibrateSos } from "@/lib/sound";
 
 export function LiveRefresh() {
   const router = useRouter();
@@ -23,7 +24,19 @@ export function LiveRefresh() {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "incidents" },
+        { event: "INSERT", schema: "public", table: "incidents" },
+        (payload) => {
+          const row = payload.new as { type?: string } | null;
+          if (row?.type === "sos") {
+            playSosAlarm();
+            vibrateSos();
+          }
+          router.refresh();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "incidents" },
         () => router.refresh()
       )
       .subscribe();
