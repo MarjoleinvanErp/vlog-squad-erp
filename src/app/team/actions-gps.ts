@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { supabaseService } from "@/lib/supabase/server";
 import { getTeamSession } from "@/lib/auth/session";
+import { sendPush } from "@/lib/push";
 
 export async function updateTeamLocationAction(
   lat: number,
@@ -84,6 +85,63 @@ export async function recordArrivalAction(
   revalidatePath("/team/ranking");
   revalidatePath(`/team/location/${locationId}`);
   revalidatePath("/ouder/dashboard");
+
+  // Push naar squad (alleen tonen als app niet zichtbaar is)
+  // en naar ouders (altijd tonen).
+  try {
+    const { data: teamRow } = await sb
+      .from("teams")
+      .select("name, event_id")
+      .eq("id", teamId)
+      .maybeSingle();
+    const team = teamRow as { name: string; event_id: string } | null;
+
+    if (team) {
+      const ordinal =
+        order === 1 ? "1e team!" : order === 2 ? "2e team" : `${order}e team`;
+
+      const { data: teamSubs } = await sb
+        .from("push_subscriptions")
+        .select("endpoint, subscription")
+        .eq("team_id", teamId);
+
+      const { data: ouderSubs } = await sb
+        .from("push_subscriptions")
+        .select("endpoint, subscription")
+        .eq("event_id", team.event_id)
+        .eq("is_ouder", true);
+
+      const teamResults = await sendPush(
+        (teamSubs ?? []) as Array<{ endpoint: string; subscription: never }>,
+        {
+          title: `${ordinal} bij ${loc.name}`,
+          body: `+${bonus} likes`,
+          url: "/team/map",
+          tag: `arrival-${locationId}`,
+          skipIfFocused: true,
+        } as never
+      );
+      const ouderResults = await sendPush(
+        (ouderSubs ?? []) as Array<{ endpoint: string; subscription: never }>,
+        {
+          title: `@${team.name} bij ${loc.name}`,
+          body: `${ordinal} · +${bonus} likes`,
+          url: "/ouder/dashboard",
+          tag: `arrival-${locationId}-${teamId}`,
+        } as never
+      );
+
+      const expired = [...teamResults.expired, ...ouderResults.expired];
+      if (expired.length > 0) {
+        await sb
+          .from("push_subscriptions")
+          .delete()
+          .in("endpoint", expired);
+      }
+    }
+  } catch {
+    // push is best-effort, niet kritiek
+  }
 
   return { ok: true, order, bonus, locationName: loc.name };
 }

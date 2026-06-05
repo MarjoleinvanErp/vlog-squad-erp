@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getTeamSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
 import { teamLogoutAction } from "../actions";
+import { PushToggle } from "../push-toggle";
 
 export default async function SquadProfilePage() {
   const teamId = await getTeamSession();
@@ -58,6 +59,8 @@ export default async function SquadProfilePage() {
           </p>
         </div>
       </header>
+
+      <PushToggle />
 
       <form action={teamLogoutAction}>
         <button

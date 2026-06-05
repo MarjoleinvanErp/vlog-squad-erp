@@ -5,6 +5,7 @@ import { getAdminSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
 import { LiveRefresh } from "./live-refresh";
 import { acknowledgeIncidentAction } from "./incident-actions";
+import { OuderPushToggle } from "./push-toggle";
 
 const TYPE_LABEL = {
   photo: "Drop",
@@ -183,6 +184,7 @@ export default async function OuderDashboardPage() {
           <h1 className="text-2xl font-bold">{event.name}</h1>
         </div>
         <div className="flex items-center gap-2">
+          <OuderPushToggle />
           <Link
             href="/ouder/map"
             className="rounded-full border border-border-strong px-4 py-2 text-sm hover:border-cyan hover:text-cyan"
