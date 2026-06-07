@@ -66,7 +66,12 @@ export default async function TeamLayout({
         };
         eventStatus = {
           id: e.id,
-          state: e.state === "paused" ? "paused" : "running",
+          state:
+            e.state === "paused"
+              ? "paused"
+              : e.state === "finished"
+                ? "finished"
+                : "running",
           rally_message: e.rally_message,
           rally_lat: e.rally_lat,
           rally_lng: e.rally_lng,
@@ -78,7 +83,11 @@ export default async function TeamLayout({
   return (
     <>
       <GPSTracker
-        enabled={!!teamId && eventStatus?.state !== "paused"}
+        enabled={
+          !!teamId &&
+          eventStatus?.state !== "paused" &&
+          eventStatus?.state !== "finished"
+        }
         locations={locations}
         initialVisited={visited}
       />

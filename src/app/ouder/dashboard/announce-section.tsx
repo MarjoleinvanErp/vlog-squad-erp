@@ -5,13 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   pauseEventAction,
   resumeEventAction,
+  finishEventAction,
   type PauseState,
 } from "./announce-actions";
 
 const initial: PauseState = { ok: false, error: null };
 
 export type EventRally = {
-  state: "running" | "paused";
+  state: "running" | "paused" | "finished";
   rally_message: string | null;
   rally_lat: number | null;
   rally_lng: number | null;
@@ -19,6 +20,9 @@ export type EventRally = {
 };
 
 export function AnnounceSection({ event }: { event: EventRally }) {
+  if (event.state === "finished") {
+    return <FinishedView />;
+  }
   if (event.state === "paused") {
     return <PausedView event={event} />;
   }
@@ -26,26 +30,39 @@ export function AnnounceSection({ event }: { event: EventRally }) {
 }
 
 function RunningView() {
-  const [open, setOpen] = useState(false);
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
   return (
     <>
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-widest text-cyan">
             spel-status
           </p>
           <p className="text-base font-bold">Spel loopt</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="rounded-xl border border-pink/40 bg-pink/10 px-4 py-2 text-sm font-bold text-pink-soft hover:bg-pink/20"
-        >
-          Stop spel + verzamel
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setPauseOpen(true)}
+            className="rounded-xl border border-pink/40 bg-pink/10 px-4 py-2 text-sm font-bold text-pink-soft hover:bg-pink/20"
+          >
+            Pauze + verzamel
+          </button>
+          <button
+            type="button"
+            onClick={() => setFinishOpen(true)}
+            className="rounded-xl border border-cyan/40 bg-cyan/10 px-4 py-2 text-sm font-bold text-cyan hover:bg-cyan/20"
+          >
+            Eindig spel
+          </button>
+        </div>
       </div>
       <AnimatePresence>
-        {open && <PauseModal onClose={() => setOpen(false)} />}
+        {pauseOpen && <PauseModal onClose={() => setPauseOpen(false)} />}
+        {finishOpen && (
+          <FinishModal onClose={() => setFinishOpen(false)} />
+        )}
       </AnimatePresence>
     </>
   );
@@ -183,11 +200,74 @@ function PauseModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function FinishModal({ onClose }: { onClose: () => void }) {
+  const [state, formAction, pending] = useActionState(
+    finishEventAction,
+    initial
+  );
+
+  if (state.ok) {
+    setTimeout(onClose, 100);
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/85 p-4 sm:items-center"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 30, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.9, y: 30, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md rounded-3xl border border-cyan/40 bg-bg-card p-6"
+      >
+        <h2 className="text-xl font-bold">Spel eindigen?</h2>
+        <p className="mt-2 text-sm text-fg-muted">
+          Squads kunnen niets meer indienen. De feed wordt open: alle squads
+          zien elkaars approved posts op /team/feed. Iedereen krijgt een push.
+        </p>
+        <p className="mt-2 text-xs text-fg-dim">
+          Je kunt het later eventueel weer heropenen (state → loopt).
+        </p>
+
+        {state.error && (
+          <p className="mt-4 rounded-xl border border-pink/30 bg-pink/10 px-4 py-3 text-sm text-pink-soft">
+            {state.error}
+          </p>
+        )}
+
+        <form action={formAction} className="mt-5 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="flex-1 rounded-xl border border-border-strong bg-bg-elev px-4 py-3 text-sm font-bold text-fg-muted"
+          >
+            Annuleren
+          </button>
+          <button
+            type="submit"
+            disabled={pending}
+            className="flex-1 rounded-xl bg-cyan px-4 py-3 text-sm font-bold text-bg disabled:opacity-50"
+          >
+            {pending ? "Eindigen..." : "Eindig spel"}
+          </button>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function PausedView({ event }: { event: EventRally }) {
   const [state, formAction, pending] = useActionState(
     resumeEventAction,
     initial
   );
+  const [finishOpen, setFinishOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-3">
@@ -217,13 +297,61 @@ function PausedView({ event }: { event: EventRally }) {
           {state.error}
         </p>
       )}
+      <div className="flex flex-wrap gap-2">
+        <form action={formAction} className="flex-1">
+          <button
+            type="submit"
+            disabled={pending}
+            className="w-full rounded-xl border border-cyan/40 bg-cyan/10 px-4 py-3 text-sm font-bold text-cyan hover:bg-cyan/20 disabled:opacity-50"
+          >
+            {pending ? "Hervatten..." : "Hervat spel"}
+          </button>
+        </form>
+        <button
+          type="button"
+          onClick={() => setFinishOpen(true)}
+          className="rounded-xl border border-border-strong bg-bg-elev px-4 py-3 text-sm font-bold text-fg-muted hover:text-fg"
+        >
+          Eindig spel
+        </button>
+      </div>
+      <AnimatePresence>
+        {finishOpen && <FinishModal onClose={() => setFinishOpen(false)} />}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function FinishedView() {
+  const [state, formAction, pending] = useActionState(
+    resumeEventAction,
+    initial
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <span className="rounded-full bg-gradient-tiktok px-3 py-1 text-xs font-extrabold uppercase tracking-widest text-white">
+          afgelopen
+        </span>
+      </div>
+      <p className="text-sm">
+        Het spel is afgelopen. Squads zien elkaars approved posts op{" "}
+        <span className="font-bold text-pink">/team/feed</span>. Nieuwe
+        submissions en arrivals zijn geblokkeerd.
+      </p>
+      {state.error && (
+        <p className="rounded-xl border border-pink/30 bg-pink/10 px-4 py-3 text-sm text-pink-soft">
+          {state.error}
+        </p>
+      )}
       <form action={formAction}>
         <button
           type="submit"
           disabled={pending}
           className="w-full rounded-xl border border-cyan/40 bg-cyan/10 px-4 py-3 text-sm font-bold text-cyan hover:bg-cyan/20 disabled:opacity-50"
         >
-          {pending ? "Hervatten..." : "Hervat spel"}
+          {pending ? "Heropen..." : "Heropen spel"}
         </button>
       </form>
     </div>

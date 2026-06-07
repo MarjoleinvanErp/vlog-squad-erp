@@ -50,9 +50,12 @@ export default async function OuderDashboardPage() {
     paused_at?: string | null;
   };
   const rally: EventRally = {
-    state: (event.state === "paused" ? "paused" : "running") as
-      | "paused"
-      | "running",
+    state:
+      event.state === "paused"
+        ? "paused"
+        : event.state === "finished"
+          ? "finished"
+          : "running",
     rally_message: event.rally_message ?? null,
     rally_lat: event.rally_lat ?? null,
     rally_lng: event.rally_lng ?? null,
@@ -224,7 +227,9 @@ export default async function OuderDashboardPage() {
         className={`rounded-3xl border p-5 ${
           rally.state === "paused"
             ? "border-pink/50 bg-pink/5"
-            : "border-border bg-bg-card"
+            : rally.state === "finished"
+              ? "border-cyan/50 bg-cyan/5"
+              : "border-border bg-bg-card"
         }`}
       >
         <AnnounceSection event={rally} />

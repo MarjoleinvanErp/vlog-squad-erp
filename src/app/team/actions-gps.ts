@@ -64,7 +64,7 @@ export async function recordArrivalAction(
   const eventState = Array.isArray(loc.events)
     ? loc.events[0]?.state
     : loc.events?.state;
-  if (eventState === "paused") return { ok: false };
+  if (eventState === "paused" || eventState === "finished") return { ok: false };
 
   const { count } = await sb
     .from("location_visits")

@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
-type FeedRow = {
+export type FeedRow = {
   id: string;
   status: "pending" | "approved" | "rejected";
   awarded_points: number | null;
@@ -15,6 +15,11 @@ type FeedRow = {
   submitted_at: string;
   task_title: string | null;
   task_type: string | null;
+  team: {
+    name: string;
+    color: string;
+    team_photo_url: string | null;
+  } | null;
 };
 
 function isVideoUrl(url: string): boolean {
@@ -55,7 +60,15 @@ export function FeedStream({
           event: "*",
           schema: "public",
           table: "submissions",
-          filter: `team_id=eq.${teamId}`,
+        },
+        () => router.refresh()
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "events",
         },
         () => router.refresh()
       )
@@ -71,83 +84,93 @@ export function FeedStream({
       style={{ paddingBottom: "calc(7rem + env(safe-area-inset-bottom))" }}
     >
       <AnimatePresence initial={false}>
-        {submissions.map((s, i) => (
-          <motion.article
-            key={s.id}
-            layout
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: Math.min(i * 0.04, 0.2), duration: 0.3 }}
-            className="relative overflow-hidden rounded-3xl border border-border bg-bg-card shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
-          >
-            <Media url={s.photo_url} text={s.text_answer} />
+        {submissions.map((s, i) => {
+          const t = s.team ?? {
+            name: teamName,
+            color: teamColor,
+            team_photo_url: teamAvatar,
+          };
+          return (
+            <motion.article
+              key={s.id}
+              layout
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: Math.min(i * 0.04, 0.2), duration: 0.3 }}
+              className="relative overflow-hidden rounded-3xl border border-border bg-bg-card shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+            >
+              <Media url={s.photo_url} text={s.text_answer} />
 
-            <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-3">
-              {teamAvatar ? (
-                <div
-                  className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full"
-                  style={{ outline: `2px solid ${teamColor}`, outlineOffset: 1 }}
-                >
-                  <Image
-                    src={teamAvatar}
-                    alt=""
-                    fill
-                    sizes="36px"
-                    className="object-cover"
+              <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-3">
+                {t.team_photo_url ? (
+                  <div
+                    className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full"
+                    style={{
+                      outline: `2px solid ${t.color}`,
+                      outlineOffset: 1,
+                    }}
+                  >
+                    <Image
+                      src={t.team_photo_url}
+                      alt=""
+                      fill
+                      sizes="36px"
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="h-9 w-9 flex-shrink-0 rounded-full"
+                    style={{ background: t.color }}
                   />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="truncate text-sm font-bold leading-tight text-white"
+                    style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
+                  >
+                    @{t.name}
+                  </p>
+                  <p
+                    className="text-[11px] text-white/80"
+                    style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
+                  >
+                    {relativeTime(s.submitted_at)}
+                  </p>
                 </div>
-              ) : (
-                <div
-                  className="h-9 w-9 flex-shrink-0 rounded-full"
-                  style={{ background: teamColor }}
+                <StatusPill
+                  status={s.status}
+                  awarded={s.awarded_points}
                 />
-              )}
-              <div className="min-w-0 flex-1">
-                <p
-                  className="truncate text-sm font-bold leading-tight text-white"
-                  style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
-                >
-                  @{teamName}
-                </p>
-                <p
-                  className="text-[11px] text-white/80"
-                  style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
-                >
-                  {relativeTime(s.submitted_at)}
-                </p>
               </div>
-              <StatusPill
-                status={s.status}
-                awarded={s.awarded_points}
-              />
-            </div>
 
-            <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-12">
-              <div className="min-w-0 flex-1">
-                {s.task_title && (
-                  <p
-                    className="truncate text-xs font-semibold uppercase tracking-widest text-white/70"
-                    style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
-                  >
-                    {s.task_title}
-                  </p>
-                )}
-                {s.text_answer && !s.photo_url && (
-                  <p
-                    className="mt-1 line-clamp-3 text-sm text-white"
-                    style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
-                  >
-                    {s.text_answer}
-                  </p>
-                )}
+              <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-12">
+                <div className="min-w-0 flex-1">
+                  {s.task_title && (
+                    <p
+                      className="truncate text-xs font-semibold uppercase tracking-widest text-white/70"
+                      style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
+                    >
+                      {s.task_title}
+                    </p>
+                  )}
+                  {s.text_answer && !s.photo_url && (
+                    <p
+                      className="mt-1 line-clamp-3 text-sm text-white"
+                      style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
+                    >
+                      {s.text_answer}
+                    </p>
+                  )}
+                </div>
+                <LikesBadge
+                  status={s.status}
+                  awarded={s.awarded_points}
+                />
               </div>
-              <LikesBadge
-                status={s.status}
-                awarded={s.awarded_points}
-              />
-            </div>
-          </motion.article>
-        ))}
+            </motion.article>
+          );
+        })}
       </AnimatePresence>
     </div>
   );

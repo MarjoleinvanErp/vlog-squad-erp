@@ -74,6 +74,9 @@ export async function submitChallengeAction(
   if (eventState === "paused") {
     return { error: "Het spel is gestopt — wacht op de ouders" };
   }
+  if (eventState === "finished") {
+    return { error: "Het spel is afgelopen" };
+  }
 
   const { data: existing } = await sb
     .from("submissions")

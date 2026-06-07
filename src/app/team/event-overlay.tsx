@@ -8,7 +8,7 @@ import { playSosAlarm, vibrateSos } from "@/lib/sound";
 
 export type EventStatus = {
   id: string;
-  state: "running" | "paused";
+  state: "running" | "paused" | "finished";
   rally_message: string | null;
   rally_lat: number | null;
   rally_lng: number | null;
@@ -41,9 +41,15 @@ export function EventOverlay({ initial }: { initial: EventStatus | null }) {
           } | null;
           if (!newRow) return;
           const prev = status?.state;
+          const nextState: EventStatus["state"] =
+            newRow.state === "paused"
+              ? "paused"
+              : newRow.state === "finished"
+                ? "finished"
+                : "running";
           const next: EventStatus = {
             id: newRow.id,
-            state: newRow.state === "paused" ? "paused" : "running",
+            state: nextState,
             rally_message: newRow.rally_message,
             rally_lat: newRow.rally_lat,
             rally_lng: newRow.rally_lng,
