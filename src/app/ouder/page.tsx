@@ -1,7 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getAdminSession } from "@/lib/auth/session";
 import { OuderLoginForm } from "./ouder-login-form";
 
-export default function OuderPage() {
+export default async function OuderPage() {
+  const eventId = await getAdminSession();
+  if (eventId) {
+    redirect("/ouder/dashboard");
+  }
   return (
     <main className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pb-10 pt-[calc(3rem+var(--st))]">
       <div

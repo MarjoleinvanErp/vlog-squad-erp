@@ -1,7 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getTeamSession } from "@/lib/auth/session";
 import { TeamLoginForm } from "./team-login-form";
 
-export default function TeamPage() {
+export default async function TeamPage() {
+  const teamId = await getTeamSession();
+  if (teamId) {
+    redirect("/team/map");
+  }
   return (
     <main className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pb-10 pt-[calc(3rem+var(--st))]">
       <div
