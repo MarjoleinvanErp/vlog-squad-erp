@@ -1,8 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pb-10 pt-[calc(5rem+var(--st))]">
+    <main className="relative mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 pb-10 pt-[calc(2rem+var(--st))]">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[60vh] bg-[radial-gradient(ellipse_at_top,rgba(254,44,85,0.35),transparent_60%)]"
@@ -12,7 +13,7 @@ export default function Home() {
         className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-[40vh] bg-[radial-gradient(ellipse_at_bottom,rgba(37,244,238,0.18),transparent_60%)]"
       />
 
-      <header className="flex flex-col gap-3">
+      <header className="flex flex-col gap-4">
         <span className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan">
           live · Erp
         </span>
@@ -21,12 +22,23 @@ export default function Home() {
           <br />
           <span>Squad</span>
         </h1>
-        <p className="mt-2 text-fg-muted">
+        <p className="text-fg-muted">
           De speurtocht-game waar je squad gaat voor de meeste likes.
         </p>
+
+        <div className="mt-2 overflow-hidden rounded-3xl border-2 border-pink/40 glow-pink">
+          <Image
+            src="/sara-en-benthe.jpeg"
+            alt="Sara en Benthe"
+            width={800}
+            height={800}
+            priority
+            className="aspect-square w-full object-cover"
+          />
+        </div>
       </header>
 
-      <nav className="flex flex-col gap-3">
+      <nav className="mt-6 flex flex-col gap-3">
         <Link
           href="/team"
           className="group relative overflow-hidden rounded-2xl bg-pink px-6 py-5 text-center text-lg font-bold text-white transition active:scale-[0.98]"
