@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
@@ -17,6 +17,26 @@ export type EventStatus = {
 export function EventOverlay({ initial }: { initial: EventStatus | null }) {
   const router = useRouter();
   const [status, setStatus] = useState<EventStatus | null>(initial);
+  const prevStateRef = useRef<string | null>(initial?.state ?? null);
+
+  // Sync state met prop-updates (van router.refresh / layout re-fetch).
+  // useState picks up alleen de FIRST render value; deze useEffect houdt
+  // status in lijn met de meest recente server-data ook zonder Realtime.
+  useEffect(() => {
+    if (!initial) return;
+    setStatus(initial);
+    if (prevStateRef.current !== "paused" && initial.state === "paused") {
+      playSosAlarm();
+      vibrateSos();
+    }
+    prevStateRef.current = initial.state;
+  }, [
+    initial?.id,
+    initial?.state,
+    initial?.rally_message,
+    initial?.rally_lat,
+    initial?.rally_lng,
+  ]);
 
   useEffect(() => {
     if (!status?.id) return;

@@ -21,6 +21,11 @@ export function TeamLiveRefresh({ teamId }: { teamId: string }) {
         { event: "*", schema: "public", table: "location_visits" },
         () => router.refresh()
       )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "events" },
+        () => router.refresh()
+      )
       .subscribe();
 
     return () => {
