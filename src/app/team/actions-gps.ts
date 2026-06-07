@@ -29,6 +29,8 @@ export type ArrivalResult = {
   order?: number;
   bonus?: number;
   locationName?: string;
+  locationId?: string;
+  tasksCount?: number;
 };
 
 export async function recordArrivalAction(
@@ -85,6 +87,13 @@ export async function recordArrivalAction(
   });
   if (error) return { ok: false };
 
+  const { count: tasksCountRaw } = await sb
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("location_id", locationId)
+    .neq("type", "arrival");
+  const tasksCount = tasksCountRaw ?? 0;
+
   revalidatePath("/team/map");
   revalidatePath("/team/feed");
   revalidatePath("/team/ranking");
@@ -116,12 +125,19 @@ export async function recordArrivalAction(
         .eq("event_id", team.event_id)
         .eq("is_ouder", true);
 
+      const challengeHint =
+        tasksCount === 0
+          ? ""
+          : tasksCount === 1
+            ? " · 1 challenge wacht"
+            : ` · ${tasksCount} challenges wachten`;
+
       const teamResults = await sendPush(
         (teamSubs ?? []) as Array<{ endpoint: string; subscription: never }>,
         {
           title: `${ordinal} bij ${loc.name}`,
-          body: `+${bonus} likes`,
-          url: "/team/map",
+          body: `+${bonus} likes${challengeHint}`,
+          url: `/team/location/${locationId}`,
           tag: `arrival-${locationId}`,
           skipIfFocused: true,
         } as never
@@ -148,5 +164,12 @@ export async function recordArrivalAction(
     // push is best-effort, niet kritiek
   }
 
-  return { ok: true, order, bonus, locationName: loc.name };
+  return {
+    ok: true,
+    order,
+    bonus,
+    locationName: loc.name,
+    locationId,
+    tasksCount,
+  };
 }

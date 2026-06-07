@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   updateTeamLocationAction,
   recordArrivalAction,
@@ -18,7 +19,7 @@ type Loc = {
 };
 
 const UPLOAD_THROTTLE_MS = 25_000;
-const MAX_ARRIVAL_ACCURACY_M = 50;
+const MAX_ARRIVAL_ACCURACY_M = 150;
 
 export function GPSTracker({
   enabled,
@@ -62,7 +63,8 @@ export function GPSTracker({
         if (visited.current.has(loc.id)) continue;
         if (inFlight.current.has(loc.id)) continue;
         const dist = haversineDistance(latitude, longitude, loc.lat, loc.lng);
-        if (dist <= loc.radius_meters) {
+        const effectiveRadius = loc.radius_meters + (accuracy ?? 0);
+        if (dist <= effectiveRadius) {
           inFlight.current.add(loc.id);
           recordArrivalAction(loc.id)
             .then((res) => {
@@ -109,19 +111,46 @@ export function GPSTracker({
           ? "3e team"
           : `${toastState.order}e team`;
 
+  const challengeHint =
+    !toastState.tasksCount || toastState.tasksCount === 0
+      ? null
+      : toastState.tasksCount === 1
+        ? "1 challenge"
+        : `${toastState.tasksCount} challenges`;
+
+  const href = toastState.locationId
+    ? `/team/location/${toastState.locationId}`
+    : "/team/map";
+
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-4 z-50 mx-auto flex max-w-md justify-center px-4">
-      <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-pink/40 bg-bg-card/95 px-4 py-3 backdrop-blur glow-pink">
-        <span className="text-xs font-semibold uppercase tracking-widest text-cyan">
-          {ordinal}
-        </span>
-        <span className="text-sm font-bold">
-          {toastState.locationName}
-        </span>
-        <span className="text-lg font-bold text-pink">
-          +{toastState.bonus}
-        </span>
-      </div>
+    <div
+      className="pointer-events-none fixed inset-x-0 z-50 mx-auto flex max-w-md justify-center px-4"
+      style={{ top: "calc(env(safe-area-inset-top) + 0.5rem)" }}
+    >
+      <Link
+        href={href}
+        onClick={() => setToastState(null)}
+        className="pointer-events-auto flex w-full items-center gap-3 rounded-2xl border border-pink/40 bg-bg-card/95 px-4 py-3 backdrop-blur glow-pink active:scale-[0.98]"
+      >
+        <div className="flex flex-col gap-0.5">
+          <span className="text-xs font-semibold uppercase tracking-widest text-cyan">
+            {ordinal}
+          </span>
+          <span className="text-sm font-bold">
+            {toastState.locationName}
+          </span>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-2xl font-bold text-pink">
+            +{toastState.bonus}
+          </span>
+          {challengeHint && (
+            <span className="rounded-full bg-cyan/15 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan">
+              {challengeHint} →
+            </span>
+          )}
+        </div>
+      </Link>
     </div>
   );
 }

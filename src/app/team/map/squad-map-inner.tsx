@@ -58,18 +58,25 @@ export default function SquadMapInner({
 }) {
   const router = useRouter();
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
 
   useEffect(() => {
     if (!("geolocation" in navigator)) return;
 
     navigator.geolocation.getCurrentPosition(
-      (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
+      (pos) => {
+        setUserPos([pos.coords.latitude, pos.coords.longitude]);
+        setAccuracy(pos.coords.accuracy);
+      },
       () => {},
       { enableHighAccuracy: false, maximumAge: 60_000, timeout: 5_000 }
     );
 
     const watch = navigator.geolocation.watchPosition(
-      (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
+      (pos) => {
+        setUserPos([pos.coords.latitude, pos.coords.longitude]);
+        setAccuracy(pos.coords.accuracy);
+      },
       () => {},
       { enableHighAccuracy: true, maximumAge: 5_000, timeout: 15_000 }
     );
@@ -77,6 +84,14 @@ export default function SquadMapInner({
   }, []);
 
   return (
+    <>
+      {accuracy != null && (
+        <div
+          className="pointer-events-none absolute right-2 top-2 z-[1000] rounded-full bg-bg-card/85 px-2 py-1 font-mono text-[10px] text-fg-muted backdrop-blur"
+        >
+          GPS ±{Math.round(accuracy)}m
+        </div>
+      )}
     <MapContainer
       center={center}
       zoom={15}
@@ -101,5 +116,6 @@ export default function SquadMapInner({
         />
       ))}
     </MapContainer>
+    </>
   );
 }
