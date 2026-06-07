@@ -8,7 +8,7 @@ const COOKIE_OPTS = {
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
   path: "/",
-  maxAge: 60 * 60 * 24,
+  maxAge: 60 * 60 * 24 * 60, // 60 dagen — ruim na de event-datum
 };
 
 export async function setTeamSession(teamId: string) {
