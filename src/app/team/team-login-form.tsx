@@ -1,18 +1,37 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { teamLoginAction, type TeamLoginState } from "./actions";
 
 const initialState: TeamLoginState = { error: null };
+const STORAGE_KEY = "vs-team-code";
 
 export function TeamLoginForm() {
   const [state, formAction, pending] = useActionState(
     teamLoginAction,
     initialState
   );
+  const [code, setCode] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) setCode(saved);
+  }, []);
+
+  function handleSubmit() {
+    const trimmed = code.trim().toUpperCase();
+    if (trimmed && typeof window !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, trimmed);
+    }
+  }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form
+      action={formAction}
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-4"
+    >
       <label className="flex flex-col gap-2">
         <span className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
           Squad-code
@@ -26,6 +45,8 @@ export function TeamLoginForm() {
           maxLength={8}
           required
           placeholder="ABCD"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
           className="rounded-2xl border-2 border-border-strong bg-bg-card px-4 py-5 text-center text-3xl font-bold tracking-[0.5em] uppercase text-fg placeholder:text-fg-dim focus:border-pink focus:outline-none focus:glow-pink"
         />
       </label>
