@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { getTeamSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
 import { ChallengeForm } from "./challenge-form";
+import { BackButton } from "./back-button";
 
 const TYPE_LABEL = {
   photo: "Drop",
@@ -65,13 +65,11 @@ export default async function ChallengePage({
 
   const backHref = task.location_id
     ? `/team/location/${task.location_id}`
-    : "/team/map";
+    : "/team/quests";
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-6 pb-10 pt-[calc(1.5rem+var(--st))]">
-      <Link href={backHref} className="text-sm text-fg-muted hover:text-fg">
-        ← terug
-      </Link>
+      <BackButton fallbackHref={backHref} />
 
       <header>
         <p
