@@ -5,6 +5,7 @@ import { getTeamSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
 import { teamLogoutAction } from "../actions";
 import { PushToggle } from "../push-toggle";
+import { SOSButton } from "../sos-button";
 
 export default async function SquadProfilePage() {
   const teamId = await getTeamSession();
@@ -61,6 +62,8 @@ export default async function SquadProfilePage() {
       </header>
 
       <PushToggle />
+
+      <SOSButton />
 
       <form action={teamLogoutAction}>
         <button

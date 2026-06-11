@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { getTeamSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
 import { GPSTracker } from "./gps-tracker";
-import { SOSButton } from "./sos-button";
 import { EventOverlay, type EventStatus } from "./event-overlay";
 import { TeamLiveRefresh } from "./team-live-refresh";
 import { ReviewBell } from "./review-bell";
@@ -95,7 +94,6 @@ export default async function TeamLayout({
       {children}
       {teamId && <TeamLiveRefresh teamId={teamId} />}
       {teamId && <ReviewBell teamId={teamId} />}
-      {teamId && <SOSButton />}
       {teamId && <EventOverlay initial={eventStatus} />}
     </>
   );
