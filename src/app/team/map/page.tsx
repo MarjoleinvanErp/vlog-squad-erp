@@ -31,12 +31,11 @@ export default async function TeamMapPage() {
     redirect("/team/onboard");
   }
 
-  const [{ data: eventData }, { data: locsData }, { data: visitsData }, { data: subsData }] =
+  const [{ data: eventData }, { data: locsData }, { data: visitsData }] =
     await Promise.all([
       sb.from("events").select("*").eq("id", team.event_id).maybeSingle(),
       sb.from("locations").select("*").eq("event_id", team.event_id),
-      sb.from("location_visits").select("location_id, bonus_awarded").eq("team_id", teamId),
-      sb.from("submissions").select("awarded_points, status").eq("team_id", teamId).eq("status", "approved"),
+      sb.from("location_visits").select("location_id").eq("team_id", teamId),
     ]);
 
   const event = eventData as { start_lat: number | null; start_lng: number | null } | null;
@@ -46,13 +45,9 @@ export default async function TeamMapPage() {
     lat: number;
     lng: number;
   }>;
-  const visits = (visitsData ?? []) as Array<{ location_id: string; bonus_awarded: number }>;
-  const subs = (subsData ?? []) as Array<{ awarded_points: number | null }>;
+  const visits = (visitsData ?? []) as Array<{ location_id: string }>;
 
   const visitedIds = new Set(visits.map((v) => v.location_id));
-  const likes =
-    subs.reduce((sum, s) => sum + (s.awarded_points ?? 0), 0) +
-    visits.reduce((sum, v) => sum + (v.bonus_awarded ?? 0), 0);
 
   const center: [number, number] =
     event?.start_lat && event?.start_lng
@@ -95,10 +90,6 @@ export default async function TeamMapPage() {
             </p>
           </div>
         </Link>
-        <div className="flex items-center gap-2 rounded-full bg-bg-card px-3 py-1.5">
-          <span className="text-xs font-bold text-pink">{likes}</span>
-          <span className="text-xs text-fg-muted">likes</span>
-        </div>
       </header>
 
       <PushBanner />

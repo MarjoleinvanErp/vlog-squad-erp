@@ -78,11 +78,11 @@ export function ReviewBell({ teamId }: { teamId: string }) {
       href="/team/feed"
       onClick={handleClick}
       aria-label={`${count} nieuwe ${count === 1 ? "review" : "reviews"}`}
-      className="fixed right-3 z-40 flex h-12 w-12 items-center justify-center rounded-full border-2 border-pink bg-bg-card text-pink shadow-[0_0_18px_rgba(254,44,85,0.55)] active:scale-95"
-      style={{ top: "calc(0.75rem + env(safe-area-inset-top))" }}
+      className="fixed right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-pink/60 bg-bg-card/90 text-pink shadow-[0_0_14px_rgba(254,44,85,0.45)] backdrop-blur active:scale-95"
+      style={{ top: "calc(0.5rem + env(safe-area-inset-top))" }}
     >
       <BellIcon />
-      <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-pink px-1 text-[10px] font-extrabold leading-none text-white">
+      <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-pink px-1 text-[10px] font-extrabold leading-none text-white">
         {count > 99 ? "99+" : count}
       </span>
     </Link>
@@ -92,8 +92,8 @@ export function ReviewBell({ teamId }: { teamId: string }) {
 function BellIcon() {
   return (
     <svg
-      width="22"
-      height="22"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
