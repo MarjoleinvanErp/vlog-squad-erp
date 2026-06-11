@@ -13,6 +13,8 @@ export type FeedRow = {
   photo_urls: string[];
   text_answer: string | null;
   submitted_at: string;
+  review_note: string | null;
+  reviewed_by: string | null;
   task_title: string | null;
   task_type: string | null;
   team: {
@@ -92,6 +94,9 @@ export function FeedStream({
           };
           const heroUrl = s.photo_urls[0] ?? null;
           const extraCount = Math.max(0, s.photo_urls.length - 1);
+          const showComment =
+            s.status === "rejected" ||
+            (s.status === "approved" && !!s.review_note);
           return (
             <motion.article
               key={s.id}
@@ -99,83 +104,95 @@ export function FeedStream({
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(i * 0.04, 0.2), duration: 0.3 }}
-              className="relative overflow-hidden rounded-3xl border border-border bg-bg-card shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+              className="overflow-hidden rounded-3xl border border-border bg-bg-card shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
             >
-              <Media url={heroUrl} text={s.text_answer} />
+              <div className="relative">
+                <Media url={heroUrl} text={s.text_answer} />
 
-              {extraCount > 0 && (
-                <span className="absolute right-3 top-12 z-10 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
-                  +{extraCount}
-                </span>
-              )}
+                {s.status === "rejected" && <RejectedStamp />}
 
-              <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-3">
-                {t.team_photo_url ? (
-                  <div
-                    className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full"
-                    style={{
-                      outline: `2px solid ${t.color}`,
-                      outlineOffset: 1,
-                    }}
-                  >
-                    <Image
-                      src={t.team_photo_url}
-                      alt=""
-                      fill
-                      sizes="36px"
-                      className="object-cover"
-                    />
-                  </div>
-                ) : (
-                  <div
-                    className="h-9 w-9 flex-shrink-0 rounded-full"
-                    style={{ background: t.color }}
-                  />
+                {extraCount > 0 && (
+                  <span className="absolute right-3 top-12 z-10 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
+                    +{extraCount}
+                  </span>
                 )}
-                <div className="min-w-0 flex-1">
-                  <p
-                    className="truncate text-sm font-bold leading-tight text-white"
-                    style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
-                  >
-                    @{t.name}
-                  </p>
-                  <p
-                    className="text-[11px] text-white/80"
-                    style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
-                  >
-                    {relativeTime(s.submitted_at)}
-                  </p>
+
+                <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-3">
+                  {t.team_photo_url ? (
+                    <div
+                      className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full"
+                      style={{
+                        outline: `2px solid ${t.color}`,
+                        outlineOffset: 1,
+                      }}
+                    >
+                      <Image
+                        src={t.team_photo_url}
+                        alt=""
+                        fill
+                        sizes="36px"
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="h-9 w-9 flex-shrink-0 rounded-full"
+                      style={{ background: t.color }}
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="truncate text-sm font-bold leading-tight text-white"
+                      style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
+                    >
+                      @{t.name}
+                    </p>
+                    <p
+                      className="text-[11px] text-white/80"
+                      style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
+                    >
+                      {relativeTime(s.submitted_at)}
+                    </p>
+                  </div>
+                  <StatusPill
+                    status={s.status}
+                    awarded={s.awarded_points}
+                  />
                 </div>
-                <StatusPill
-                  status={s.status}
-                  awarded={s.awarded_points}
-                />
+
+                <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-12">
+                  <div className="min-w-0 flex-1">
+                    {s.task_title && (
+                      <p
+                        className="truncate text-xs font-semibold uppercase tracking-widest text-white/70"
+                        style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
+                      >
+                        {s.task_title}
+                      </p>
+                    )}
+                    {s.text_answer && !heroUrl && (
+                      <p
+                        className="mt-1 line-clamp-3 text-sm text-white"
+                        style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
+                      >
+                        {s.text_answer}
+                      </p>
+                    )}
+                  </div>
+                  <LikesBadge
+                    status={s.status}
+                    awarded={s.awarded_points}
+                  />
+                </div>
               </div>
 
-              <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-12">
-                <div className="min-w-0 flex-1">
-                  {s.task_title && (
-                    <p
-                      className="truncate text-xs font-semibold uppercase tracking-widest text-white/70"
-                      style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
-                    >
-                      {s.task_title}
-                    </p>
-                  )}
-                  {s.text_answer && !heroUrl && (
-                    <p
-                      className="mt-1 line-clamp-3 text-sm text-white"
-                      style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
-                    >
-                      {s.text_answer}
-                    </p>
-                  )}
-                </div>
-                <LikesBadge
+              {showComment && (
+                <ReviewComment
                   status={s.status}
-                  awarded={s.awarded_points}
+                  reviewer={s.reviewed_by}
+                  note={s.review_note}
                 />
-              </div>
+              )}
             </motion.article>
           );
         })}
@@ -231,6 +248,78 @@ function Media({
   );
 }
 
+function RejectedStamp() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-red-700/35">
+      <svg
+        width="140"
+        height="140"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        style={{
+          filter: "drop-shadow(0 0 18px rgba(220,38,38,0.9))",
+        }}
+      >
+        <line x1="19" y1="5" x2="5" y2="19" />
+        <line x1="5" y1="5" x2="19" y2="19" />
+      </svg>
+    </div>
+  );
+}
+
+function ReviewComment({
+  status,
+  reviewer,
+  note,
+}: {
+  status: "approved" | "rejected" | "pending";
+  reviewer: string | null;
+  note: string | null;
+}) {
+  const reviewerName = (reviewer ?? "").trim() || "ouder";
+
+  if (status === "rejected") {
+    return (
+      <div className="border-t border-red-500/30 bg-red-500/10 px-4 py-3 text-sm">
+        <p className="flex items-center gap-1.5 font-bold text-red-300">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+          Afgekeurd door @{reviewerName}
+        </p>
+        {note && (
+          <p className="mt-1 text-fg leading-snug">{note}</p>
+        )}
+      </div>
+    );
+  }
+
+  if (status === "approved" && note) {
+    return (
+      <div className="border-t border-border px-4 py-3 text-sm leading-snug">
+        <p>
+          <span className="font-bold text-cyan">@{reviewerName}</span>{" "}
+          <span className="text-fg">{note}</span>
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function StatusPill({
   status,
   awarded,
@@ -257,7 +346,7 @@ function StatusPill({
     );
   }
   return (
-    <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white/60">
+    <span className="rounded-full bg-red-500/30 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-red-200">
       reject
     </span>
   );
