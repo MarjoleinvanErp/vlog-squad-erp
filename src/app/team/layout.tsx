@@ -5,6 +5,7 @@ import { GPSTracker } from "./gps-tracker";
 import { SOSButton } from "./sos-button";
 import { EventOverlay, type EventStatus } from "./event-overlay";
 import { TeamLiveRefresh } from "./team-live-refresh";
+import { ReviewBell } from "./review-bell";
 
 type Loc = {
   id: string;
@@ -93,6 +94,7 @@ export default async function TeamLayout({
       />
       {children}
       {teamId && <TeamLiveRefresh teamId={teamId} />}
+      {teamId && <ReviewBell teamId={teamId} />}
       {teamId && <SOSButton />}
       {teamId && <EventOverlay initial={eventStatus} />}
     </>

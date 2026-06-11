@@ -109,7 +109,7 @@ export default async function FeedPage() {
     const { data } = await sb
       .from("submissions")
       .select(
-        "id, team_id, status, awarded_points, photo_url, text_answer, submitted_at, tasks(title, type)"
+        "id, team_id, status, awarded_points, photo_urls, text_answer, submitted_at, tasks(title, type)"
       )
       .eq("team_id", teamId)
       .order("submitted_at", { ascending: false });

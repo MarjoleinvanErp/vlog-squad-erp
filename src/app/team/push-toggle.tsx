@@ -10,7 +10,6 @@ import {
 import {
   saveTeamPushSubscriptionAction,
   deleteTeamPushSubscriptionAction,
-  sendTeamTestPushAction,
 } from "./actions-push";
 
 type State = "checking" | "unsupported" | "off" | "on" | "denied";
@@ -18,8 +17,6 @@ type State = "checking" | "unsupported" | "off" | "on" | "denied";
 export function PushToggle() {
   const [state, setState] = useState<State>("checking");
   const [busy, setBusy] = useState(false);
-  const [testStatus, setTestStatus] = useState<string | null>(null);
-  const [testError, setTestError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isPushSupported()) {
@@ -69,26 +66,6 @@ export function PushToggle() {
     }
   }
 
-  async function sendTest() {
-    setBusy(true);
-    setTestStatus(null);
-    setTestError(null);
-    try {
-      const res = await sendTeamTestPushAction();
-      if (res.ok) {
-        setTestStatus(
-          `Push verstuurd naar ${res.sent} device(s). Check je notificaties (kan paar seconden duren).`
-        );
-      } else {
-        setTestError(res.error ?? "Onbekende fout");
-      }
-    } catch (e) {
-      setTestError(e instanceof Error ? e.message : "Verzenden mislukt");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   if (state === "checking" || state === "unsupported") return null;
 
   if (state === "denied") {
@@ -104,46 +81,21 @@ export function PushToggle() {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <button
-        type="button"
-        onClick={state === "on" ? disable : enable}
-        disabled={busy}
-        className={`w-full rounded-2xl border px-6 py-4 text-sm font-bold uppercase tracking-widest transition disabled:opacity-50 ${
-          state === "on"
-            ? "border-cyan/40 bg-cyan/10 text-cyan hover:bg-cyan/20"
-            : "border-pink/40 bg-pink/10 text-pink-soft hover:bg-pink/20"
-        }`}
-      >
-        {busy
-          ? "Bezig..."
-          : state === "on"
-            ? "Meldingen aan — tap om uit te zetten"
-            : "Zet meldingen aan"}
-      </button>
-
-      {state === "on" && (
-        <>
-          <button
-            type="button"
-            onClick={sendTest}
-            disabled={busy}
-            className="w-full rounded-xl border border-border-strong bg-bg-elev px-4 py-3 text-xs font-bold uppercase tracking-widest text-fg-muted hover:text-fg disabled:opacity-50"
-          >
-            Stuur test-melding naar mezelf
-          </button>
-          {testStatus && (
-            <p className="rounded-lg border border-cyan/30 bg-cyan/5 px-3 py-2 text-xs text-cyan">
-              {testStatus}
-            </p>
-          )}
-          {testError && (
-            <p className="rounded-lg border border-pink/30 bg-pink/10 px-3 py-2 text-xs text-pink-soft">
-              {testError}
-            </p>
-          )}
-        </>
-      )}
-    </div>
+    <button
+      type="button"
+      onClick={state === "on" ? disable : enable}
+      disabled={busy}
+      className={`w-full rounded-2xl border px-6 py-4 text-sm font-bold uppercase tracking-widest transition disabled:opacity-50 ${
+        state === "on"
+          ? "border-cyan/40 bg-cyan/10 text-cyan hover:bg-cyan/20"
+          : "border-pink/40 bg-pink/10 text-pink-soft hover:bg-pink/20"
+      }`}
+    >
+      {busy
+        ? "Bezig..."
+        : state === "on"
+          ? "Meldingen aan — tap om uit te zetten"
+          : "Zet meldingen aan"}
+    </button>
   );
 }
