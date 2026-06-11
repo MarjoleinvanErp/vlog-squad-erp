@@ -3,7 +3,7 @@
 import "leaflet/dist/leaflet.css";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import { DivIcon } from "leaflet";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Loc = {
@@ -39,13 +39,33 @@ const userIcon = new DivIcon({
   iconAnchor: [9, 9],
 });
 
-function RecenterOnUser({ userPos }: { userPos: [number, number] | null }) {
+function RecenterController({
+  userPos,
+  trigger,
+}: {
+  userPos: [number, number] | null;
+  trigger: number;
+}) {
   const map = useMap();
+  const initialDone = useRef(false);
+  const lastTrigger = useRef(trigger);
+
+  // Eerste GPS-fix: kaart centreren zodat de squad zichzelf direct ziet.
   useEffect(() => {
+    if (!userPos || initialDone.current) return;
+    initialDone.current = true;
+    map.flyTo(userPos, Math.max(map.getZoom(), 15), { duration: 0.6 });
+  }, [userPos, map]);
+
+  // Daarna alleen op expliciete knop-klik (trigger increment).
+  useEffect(() => {
+    if (trigger === lastTrigger.current) return;
+    lastTrigger.current = trigger;
     if (userPos) {
       map.flyTo(userPos, Math.max(map.getZoom(), 15), { duration: 0.6 });
     }
-  }, [userPos, map]);
+  }, [trigger, userPos, map]);
+
   return null;
 }
 
@@ -59,6 +79,7 @@ export default function SquadMapInner({
   const router = useRouter();
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [recenterTrigger, setRecenterTrigger] = useState(0);
 
   useEffect(() => {
     if (!("geolocation" in navigator)) return;
@@ -92,6 +113,15 @@ export default function SquadMapInner({
           GPS ±{Math.round(accuracy)}m
         </div>
       )}
+      <button
+        type="button"
+        onClick={() => setRecenterTrigger((c) => c + 1)}
+        disabled={!userPos}
+        aria-label="Centreer op mijn locatie"
+        className="absolute bottom-4 right-4 z-[1000] flex h-12 w-12 items-center justify-center rounded-full border-2 border-cyan bg-bg-card/95 text-cyan shadow-[0_0_16px_rgba(37,244,238,0.5)] backdrop-blur transition active:scale-95 disabled:opacity-40"
+      >
+        <CrosshairIcon />
+      </button>
     <MapContainer
       center={center}
       zoom={15}
@@ -104,7 +134,7 @@ export default function SquadMapInner({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {userPos && <Marker position={userPos} icon={userIcon} />}
-      <RecenterOnUser userPos={userPos} />
+      <RecenterController userPos={userPos} trigger={recenterTrigger} />
       {locations.map((loc) => (
         <Marker
           key={loc.id}
@@ -117,5 +147,26 @@ export default function SquadMapInner({
       ))}
     </MapContainer>
     </>
+  );
+}
+
+function CrosshairIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="8" />
+      <line x1="12" y1="2" x2="12" y2="5" />
+      <line x1="12" y1="19" x2="12" y2="22" />
+      <line x1="2" y1="12" x2="5" y2="12" />
+      <line x1="19" y1="12" x2="22" y2="12" />
+    </svg>
   );
 }
