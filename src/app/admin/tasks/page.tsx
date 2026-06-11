@@ -9,9 +9,13 @@ type TaskRow = {
   id: string;
   title: string;
   description: string;
-  type: "photo" | "text" | "multiple_choice" | "arrival";
+  type: "photo" | "video" | "text" | "multiple_choice" | "arrival";
   max_points: number;
   location_id: string | null;
+  min_photos: number | null;
+  max_photos: number | null;
+  min_seconds: number | null;
+  max_seconds: number | null;
 };
 
 type LocationRow = {
@@ -21,6 +25,7 @@ type LocationRow = {
 
 const TYPE_LABEL: Record<TaskRow["type"], string> = {
   photo: "Drop",
+  video: "Video",
   text: "Hot Take",
   multiple_choice: "Quiz",
   arrival: "Arrival",
@@ -28,10 +33,27 @@ const TYPE_LABEL: Record<TaskRow["type"], string> = {
 
 const TYPE_COLOR: Record<TaskRow["type"], string> = {
   photo: "text-pink",
+  video: "text-pink",
   text: "text-cyan",
   multiple_choice: "text-yellow-400",
   arrival: "text-green-400",
 };
+
+function mediaHint(t: TaskRow): string | null {
+  if (t.type === "photo") {
+    const max = t.max_photos ?? 1;
+    const min = t.min_photos ?? max;
+    if (min === max) return `${max} foto${max === 1 ? "" : "'s"}`;
+    return `${min}–${max} foto's`;
+  }
+  if (t.type === "video") {
+    const max = t.max_seconds ?? 10;
+    const min = t.min_seconds ?? 1;
+    if (min === max) return `${max}s video`;
+    return `${min}–${max}s video`;
+  }
+  return null;
+}
 
 export default async function AdminTasksPage() {
   const eventId = await getAdminSession();
@@ -70,7 +92,7 @@ export default async function AdminTasksPage() {
                 className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     <span
                       className={`text-xs font-bold uppercase tracking-widest ${TYPE_COLOR[t.type]}`}
                     >
@@ -79,6 +101,11 @@ export default async function AdminTasksPage() {
                     <span className="text-xs text-fg-dim">
                       · {t.max_points} likes
                     </span>
+                    {mediaHint(t) && (
+                      <span className="text-xs text-fg-dim">
+                        · {mediaHint(t)}
+                      </span>
+                    )}
                     {t.location_id && (
                       <span className="text-xs text-fg-dim">
                         · {locNameById.get(t.location_id) ?? "?"}

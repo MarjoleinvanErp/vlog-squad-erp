@@ -7,6 +7,7 @@ import { ReviewForm } from "./review-form";
 
 const TYPE_LABEL = {
   photo: "Drop",
+  video: "Video",
   text: "Hot Take",
   multiple_choice: "Quiz",
   arrival: "Arrival",
@@ -14,10 +15,15 @@ const TYPE_LABEL = {
 
 const TYPE_COLOR = {
   photo: "text-pink",
+  video: "text-pink",
   text: "text-cyan",
   multiple_choice: "text-yellow-400",
   arrival: "text-green-400",
 } as const;
+
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url);
+}
 
 export default async function ReviewPage({
   params,
@@ -44,12 +50,13 @@ export default async function ReviewPage({
     task_id: string;
     text_answer: string | null;
     choice_index: number | null;
-    photo_url: string | null;
+    photo_urls: string[] | null;
     status: "pending" | "approved" | "rejected";
     awarded_points: number | null;
     review_note: string | null;
     submitted_at: string;
   };
+  const photoUrls = sub.photo_urls ?? [];
 
   const [{ data: teamData }, { data: taskData }] = await Promise.all([
     sb.from("teams").select("*").eq("id", sub.team_id).maybeSingle(),
@@ -128,15 +135,37 @@ export default async function ReviewPage({
       </section>
 
       <section className="overflow-hidden rounded-3xl border border-border bg-bg-card">
-        {sub.photo_url && (
-          <div className="relative aspect-square w-full bg-black">
-            <Image
-              src={sub.photo_url}
-              alt=""
-              fill
-              sizes="(max-width: 480px) 100vw, 480px"
-              className="object-cover"
-            />
+        {photoUrls.length > 0 && (
+          <div className="flex flex-col">
+            {photoUrls.map((url, i) =>
+              isVideoUrl(url) ? (
+                <video
+                  key={i}
+                  src={url}
+                  controls
+                  playsInline
+                  className="aspect-video w-full bg-black"
+                />
+              ) : (
+                <div
+                  key={i}
+                  className="relative aspect-square w-full bg-black"
+                >
+                  <Image
+                    src={url}
+                    alt={`Foto ${i + 1}`}
+                    fill
+                    sizes="(max-width: 480px) 100vw, 480px"
+                    className="object-cover"
+                  />
+                  {photoUrls.length > 1 && (
+                    <span className="absolute right-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">
+                      {i + 1}/{photoUrls.length}
+                    </span>
+                  )}
+                </div>
+              )
+            )}
           </div>
         )}
         {sub.text_answer && (

@@ -6,13 +6,16 @@ import { Label, buttonPrimary, inputClass } from "../admin-layout";
 
 const initial: CreateTaskState = { ok: false, error: null };
 
+type TaskTypeValue = "photo" | "video" | "text" | "multiple_choice" | "arrival";
+
 const TYPE_OPTIONS: {
-  value: "photo" | "text" | "multiple_choice" | "arrival";
+  value: TaskTypeValue;
   label: string;
   hint: string;
 }[] = [
-  { value: "photo", label: "Photo / Video Drop", hint: "Foto- of videopost" },
-  { value: "text", label: "Hot Take / Text", hint: "Open antwoord" },
+  { value: "photo", label: "Photo Drop", hint: "1+ foto's insturen" },
+  { value: "video", label: "Video Drop", hint: "Korte video opnemen" },
+  { value: "text", label: "Hot Take", hint: "Open antwoord" },
   { value: "multiple_choice", label: "Quiz", hint: "Meerkeuze, auto-check" },
   { value: "arrival", label: "Arrival", hint: "Auto bij GPS-aankomst" },
 ];
@@ -26,7 +29,8 @@ export function CreateTaskForm({
     createTaskAction,
     initial
   );
-  const [type, setType] = useState<typeof TYPE_OPTIONS[number]["value"]>("photo");
+  const [type, setType] = useState<TaskTypeValue>("photo");
+  const [rangeMode, setRangeMode] = useState(false);
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
@@ -35,12 +39,15 @@ export function CreateTaskForm({
           Type
         </span>
         <input type="hidden" name="type" value={type} />
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {TYPE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
-              onClick={() => setType(opt.value)}
+              onClick={() => {
+                setType(opt.value);
+                setRangeMode(false);
+              }}
               className={`rounded-xl border px-3 py-3 text-left text-sm transition ${
                 type === opt.value
                   ? "border-pink bg-pink/10 text-fg"
@@ -104,6 +111,20 @@ export function CreateTaskForm({
         </Label>
       </div>
 
+      {type === "photo" && (
+        <PhotoCountFields
+          rangeMode={rangeMode}
+          onToggleRange={() => setRangeMode((v) => !v)}
+        />
+      )}
+
+      {type === "video" && (
+        <VideoDurationFields
+          rangeMode={rangeMode}
+          onToggleRange={() => setRangeMode((v) => !v)}
+        />
+      )}
+
       {type === "multiple_choice" && (
         <>
           <Label
@@ -144,5 +165,100 @@ export function CreateTaskForm({
         {pending ? "Bezig..." : "Challenge toevoegen"}
       </button>
     </form>
+  );
+}
+
+function PhotoCountFields({
+  rangeMode,
+  onToggleRange,
+}: {
+  rangeMode: boolean;
+  onToggleRange: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-4">
+        <Label
+          label="Aantal foto's"
+          hint={rangeMode ? "maximum" : "precies dit aantal"}
+        >
+          <input
+            type="number"
+            name="max_photos"
+            min={1}
+            max={10}
+            defaultValue={1}
+            required
+            className={inputClass}
+          />
+        </Label>
+        {rangeMode && (
+          <Label label="Min foto's" hint="minimaal vereist">
+            <input
+              type="number"
+              name="min_photos"
+              min={1}
+              max={10}
+              defaultValue={1}
+              required
+              className={inputClass}
+            />
+          </Label>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onToggleRange}
+        className="self-start text-xs font-bold uppercase tracking-widest text-cyan hover:text-pink"
+      >
+        {rangeMode ? "— vast aantal" : "+ ook minder toestaan"}
+      </button>
+    </div>
+  );
+}
+
+function VideoDurationFields({
+  rangeMode,
+  onToggleRange,
+}: {
+  rangeMode: boolean;
+  onToggleRange: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-4">
+        <Label label="Max seconden" hint="harde stop bij opname">
+          <input
+            type="number"
+            name="max_seconds"
+            min={1}
+            max={60}
+            defaultValue={10}
+            required
+            className={inputClass}
+          />
+        </Label>
+        {rangeMode && (
+          <Label label="Min seconden" hint="korter wordt afgewezen">
+            <input
+              type="number"
+              name="min_seconds"
+              min={1}
+              max={60}
+              defaultValue={1}
+              required
+              className={inputClass}
+            />
+          </Label>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={onToggleRange}
+        className="self-start text-xs font-bold uppercase tracking-widest text-cyan hover:text-pink"
+      >
+        {rangeMode ? "— alleen max" : "+ ook min-duur"}
+      </button>
+    </div>
   );
 }

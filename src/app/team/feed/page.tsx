@@ -10,7 +10,7 @@ type RawRow = {
   team_id: string;
   status: "pending" | "approved" | "rejected";
   awarded_points: number | null;
-  photo_url: string | null;
+  photo_urls: string[] | null;
   text_answer: string | null;
   submitted_at: string;
   tasks:
@@ -76,7 +76,7 @@ export default async function FeedPage() {
       const { data } = await sb
         .from("submissions")
         .select(
-          "id, team_id, status, awarded_points, photo_url, text_answer, submitted_at, tasks(title, type)"
+          "id, team_id, status, awarded_points, photo_urls, text_answer, submitted_at, tasks(title, type)"
         )
         .in("team_id", teamIds)
         .eq("status", "approved")
@@ -90,7 +90,7 @@ export default async function FeedPage() {
           id: r.id,
           status: r.status,
           awarded_points: r.awarded_points,
-          photo_url: r.photo_url,
+          photo_urls: r.photo_urls ?? [],
           text_answer: r.text_answer,
           submitted_at: r.submitted_at,
           task_title: task?.title ?? null,
@@ -120,7 +120,7 @@ export default async function FeedPage() {
         id: r.id,
         status: r.status,
         awarded_points: r.awarded_points,
-        photo_url: r.photo_url,
+        photo_urls: r.photo_urls ?? [],
         text_answer: r.text_answer,
         submitted_at: r.submitted_at,
         task_title: task?.title ?? null,

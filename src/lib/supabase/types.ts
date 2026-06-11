@@ -1,4 +1,9 @@
-export type TaskType = "photo" | "text" | "multiple_choice" | "arrival";
+export type TaskType =
+  | "photo"
+  | "video"
+  | "text"
+  | "multiple_choice"
+  | "arrival";
 export type SubmissionStatus = "pending" | "approved" | "rejected";
 export type IncidentType = "sos" | "inactive" | "out_of_zone";
 
@@ -58,6 +63,10 @@ export interface TaskRow {
   type: TaskType;
   max_points: number;
   options: { choices: string[]; correct: number } | null;
+  min_photos: number | null;
+  max_photos: number | null;
+  min_seconds: number | null;
+  max_seconds: number | null;
   requires_approval: boolean;
   sort_order: number;
   created_at: string;
@@ -69,7 +78,7 @@ export interface SubmissionRow {
   task_id: string;
   text_answer: string | null;
   choice_index: number | null;
-  photo_url: string | null;
+  photo_urls: string[];
   submitted_at: string;
   status: SubmissionStatus;
   awarded_points: number | null;

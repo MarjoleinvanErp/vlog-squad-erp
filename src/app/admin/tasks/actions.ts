@@ -6,7 +6,13 @@ import { getAdminSession } from "@/lib/auth/session";
 
 export type CreateTaskState = { ok?: boolean; error?: string | null };
 
-const VALID_TYPES = ["photo", "text", "multiple_choice", "arrival"] as const;
+const VALID_TYPES = [
+  "photo",
+  "video",
+  "text",
+  "multiple_choice",
+  "arrival",
+] as const;
 type TaskType = (typeof VALID_TYPES)[number];
 
 function isTaskType(v: string): v is TaskType {
@@ -52,6 +58,39 @@ export async function createTaskAction(
     return { error: "Arrival-challenge heeft een locatie nodig" };
   }
 
+  let minPhotos: number | null = null;
+  let maxPhotos: number | null = null;
+  let minSeconds: number | null = null;
+  let maxSeconds: number | null = null;
+
+  if (typeRaw === "photo") {
+    const max = Number(formData.get("max_photos") ?? 1);
+    if (!Number.isInteger(max) || max < 1 || max > 10) {
+      return { error: "Aantal foto's moet tussen 1 en 10 zijn" };
+    }
+    const minRaw = formData.get("min_photos");
+    const min = minRaw == null ? max : Number(minRaw);
+    if (!Number.isInteger(min) || min < 1 || min > max) {
+      return { error: "Min foto's moet ≥ 1 en ≤ max foto's zijn" };
+    }
+    minPhotos = min;
+    maxPhotos = max;
+  }
+
+  if (typeRaw === "video") {
+    const max = Number(formData.get("max_seconds") ?? 10);
+    if (!Number.isInteger(max) || max < 1 || max > 60) {
+      return { error: "Max seconden moet tussen 1 en 60 zijn" };
+    }
+    const minRaw = formData.get("min_seconds");
+    const min = minRaw == null ? 1 : Number(minRaw);
+    if (!Number.isInteger(min) || min < 1 || min > max) {
+      return { error: "Min seconden moet ≥ 1 en ≤ max seconden zijn" };
+    }
+    minSeconds = min;
+    maxSeconds = max;
+  }
+
   const sb = supabaseService();
   const { error } = await sb.from("tasks").insert({
     event_id: eventId,
@@ -61,6 +100,10 @@ export async function createTaskAction(
     type: typeRaw,
     max_points: maxPoints,
     options,
+    min_photos: minPhotos,
+    max_photos: maxPhotos,
+    min_seconds: minSeconds,
+    max_seconds: maxSeconds,
     requires_approval: typeRaw !== "multiple_choice" && typeRaw !== "arrival",
   });
 

@@ -11,6 +11,7 @@ import { OuderPushBanner } from "./push-banner";
 
 const TYPE_LABEL = {
   photo: "Drop",
+  video: "Video",
   text: "Hot Take",
   multiple_choice: "Quiz",
   arrival: "Arrival",
@@ -18,10 +19,15 @@ const TYPE_LABEL = {
 
 const TYPE_COLOR = {
   photo: "text-pink",
+  video: "text-pink",
   text: "text-cyan",
   multiple_choice: "text-yellow-400",
   arrival: "text-green-400",
 } as const;
+
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|mov|webm|m4v)(\?|$)/i.test(url);
+}
 
 const INACTIVITY_THRESHOLD_MIN = 20;
 
@@ -86,7 +92,7 @@ export default async function OuderDashboardPage() {
       ? sb
           .from("submissions")
           .select(
-            "id, team_id, task_id, photo_url, text_answer, submitted_at, status, tasks(title, type, max_points)"
+            "id, team_id, task_id, photo_urls, text_answer, submitted_at, status, tasks(title, type, max_points)"
           )
           .eq("status", "pending")
           .in("team_id", teamIds)
@@ -125,7 +131,7 @@ export default async function OuderDashboardPage() {
     id: string;
     team_id: string;
     task_id: string;
-    photo_url: string | null;
+    photo_urls: string[] | null;
     text_answer: string | null;
     submitted_at: string;
     tasks:
@@ -339,21 +345,45 @@ export default async function OuderDashboardPage() {
             {pending.map((p) => {
               const t = teamById.get(p.team_id);
               if (!t || !p.task) return null;
+              const urls = p.photo_urls ?? [];
+              const heroUrl = urls[0] ?? null;
+              const extraCount = Math.max(0, urls.length - 1);
+              const heroIsVideo = heroUrl ? isVideoUrl(heroUrl) : false;
               return (
                 <li key={p.id}>
                   <Link
                     href={`/ouder/submission/${p.id}`}
                     className="flex items-center gap-3 rounded-2xl border border-border-strong bg-bg-elev p-3 transition hover:border-pink"
                   >
-                    {p.photo_url ? (
-                      <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl">
-                        <Image
-                          src={p.photo_url}
-                          alt=""
-                          fill
-                          sizes="56px"
-                          className="object-cover"
-                        />
+                    {heroUrl ? (
+                      <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-black">
+                        {heroIsVideo ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <video
+                              src={heroUrl}
+                              muted
+                              playsInline
+                              className="absolute inset-0 h-full w-full object-cover"
+                            />
+                            <span className="absolute inset-0 flex items-center justify-center text-white">
+                              ▶
+                            </span>
+                          </>
+                        ) : (
+                          <Image
+                            src={heroUrl}
+                            alt=""
+                            fill
+                            sizes="56px"
+                            className="object-cover"
+                          />
+                        )}
+                        {extraCount > 0 && (
+                          <span className="absolute right-0.5 bottom-0.5 rounded-full bg-black/80 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                            +{extraCount}
+                          </span>
+                        )}
                       </div>
                     ) : (
                       <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-bg-card text-xs text-fg-dim">

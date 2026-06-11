@@ -18,6 +18,12 @@ export type SignedUpload = {
   token?: string;
 };
 
+function randomSuffix(): string {
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export async function createSubmissionUploadUrl(
   taskId: string,
   ext: string
@@ -27,7 +33,7 @@ export async function createSubmissionUploadUrl(
   if (!taskId) return { ok: false, error: "Geen challenge" };
 
   const safeExt = /^[a-z0-9]{1,5}$/.test(ext) ? ext : "jpg";
-  const path = `${teamId}/${taskId}-${Date.now()}.${safeExt}`;
+  const path = `${teamId}/${taskId}-${Date.now()}-${randomSuffix()}.${safeExt}`;
 
   const sb = supabaseService();
   const { data, error } = await sb.storage
@@ -60,9 +66,13 @@ export async function submitChallengeAction(
   if (!taskData) return { error: "Challenge niet gevonden" };
   const task = taskData as {
     id: string;
-    type: "photo" | "text" | "multiple_choice" | "arrival";
+    type: "photo" | "video" | "text" | "multiple_choice" | "arrival";
     max_points: number;
     options: { choices: string[]; correct: number } | null;
+    min_photos: number | null;
+    max_photos: number | null;
+    min_seconds: number | null;
+    max_seconds: number | null;
     location_id: string | null;
     events:
       | { state: string }
@@ -128,18 +138,43 @@ export async function submitChallengeAction(
       status: "pending",
     });
     if (error) return { error: error.message };
-  } else if (task.type === "photo") {
-    const photoPath = String(formData.get("photo_path") ?? "");
-    if (!photoPath || !photoPath.startsWith(`${teamId}/`)) {
-      return { error: "Upload eerst een foto/video" };
+  } else if (task.type === "photo" || task.type === "video") {
+    const rawPaths = formData.getAll("photo_paths").map((v) => String(v));
+    const paths = rawPaths.filter(
+      (p) => p && p.startsWith(`${teamId}/`)
+    );
+    if (paths.length === 0) {
+      return {
+        error:
+          task.type === "video"
+            ? "Upload eerst een video"
+            : "Upload eerst je foto's",
+      };
     }
-    const {
-      data: { publicUrl },
-    } = sb.storage.from("submission-photos").getPublicUrl(photoPath);
+
+    if (task.type === "photo") {
+      const max = task.max_photos ?? 1;
+      const min = task.min_photos ?? max;
+      if (paths.length < min) {
+        return { error: `Te weinig foto's (min ${min})` };
+      }
+      if (paths.length > max) {
+        return { error: `Te veel foto's (max ${max})` };
+      }
+    } else {
+      if (paths.length !== 1) {
+        return { error: "Video-opdracht heeft precies één bestand nodig" };
+      }
+    }
+
+    const photoUrls = paths.map(
+      (p) => sb.storage.from("submission-photos").getPublicUrl(p).data.publicUrl
+    );
+
     const { error } = await sb.from("submissions").insert({
       team_id: teamId,
       task_id: taskId,
-      photo_url: publicUrl,
+      photo_urls: photoUrls,
       status: "pending",
     });
     if (error) return { error: error.message };

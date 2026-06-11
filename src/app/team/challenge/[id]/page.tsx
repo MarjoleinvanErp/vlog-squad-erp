@@ -6,6 +6,7 @@ import { ChallengeForm } from "./challenge-form";
 
 const TYPE_LABEL = {
   photo: "Drop",
+  video: "Video",
   text: "Hot Take",
   multiple_choice: "Quiz",
   arrival: "Arrival",
@@ -13,6 +14,7 @@ const TYPE_LABEL = {
 
 const TYPE_COLOR = {
   photo: "text-pink",
+  video: "text-pink",
   text: "text-cyan",
   multiple_choice: "text-yellow-400",
   arrival: "text-green-400",
@@ -40,9 +42,13 @@ export default async function ChallengePage({
     id: string;
     title: string;
     description: string;
-    type: "photo" | "text" | "multiple_choice" | "arrival";
+    type: "photo" | "video" | "text" | "multiple_choice" | "arrival";
     max_points: number;
     options: { choices: string[]; correct: number } | null;
+    min_photos: number | null;
+    max_photos: number | null;
+    min_seconds: number | null;
+    max_seconds: number | null;
     location_id: string | null;
   };
 

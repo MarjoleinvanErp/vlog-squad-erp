@@ -10,7 +10,7 @@ export type FeedRow = {
   id: string;
   status: "pending" | "approved" | "rejected";
   awarded_points: number | null;
-  photo_url: string | null;
+  photo_urls: string[];
   text_answer: string | null;
   submitted_at: string;
   task_title: string | null;
@@ -90,6 +90,8 @@ export function FeedStream({
             color: teamColor,
             team_photo_url: teamAvatar,
           };
+          const heroUrl = s.photo_urls[0] ?? null;
+          const extraCount = Math.max(0, s.photo_urls.length - 1);
           return (
             <motion.article
               key={s.id}
@@ -99,7 +101,13 @@ export function FeedStream({
               transition={{ delay: Math.min(i * 0.04, 0.2), duration: 0.3 }}
               className="relative overflow-hidden rounded-3xl border border-border bg-bg-card shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
             >
-              <Media url={s.photo_url} text={s.text_answer} />
+              <Media url={heroUrl} text={s.text_answer} />
+
+              {extraCount > 0 && (
+                <span className="absolute right-3 top-12 z-10 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
+                  +{extraCount}
+                </span>
+              )}
 
               <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 bg-gradient-to-b from-black/70 to-transparent px-4 pb-8 pt-3">
                 {t.team_photo_url ? (
@@ -154,7 +162,7 @@ export function FeedStream({
                       {s.task_title}
                     </p>
                   )}
-                  {s.text_answer && !s.photo_url && (
+                  {s.text_answer && !heroUrl && (
                     <p
                       className="mt-1 line-clamp-3 text-sm text-white"
                       style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
