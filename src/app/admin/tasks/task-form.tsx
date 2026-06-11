@@ -1,7 +1,11 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createTaskAction, type CreateTaskState } from "./actions";
+import {
+  createTaskAction,
+  updateTaskAction,
+  type CreateTaskState,
+} from "./actions";
 import { Label, buttonPrimary, inputClass } from "../admin-layout";
 
 const initial: CreateTaskState = { ok: false, error: null };
@@ -20,20 +24,48 @@ const TYPE_OPTIONS: {
   { value: "arrival", label: "Arrival", hint: "Auto bij GPS-aankomst" },
 ];
 
-export function CreateTaskForm({
+export type TaskFormValue = {
+  id: string;
+  type: TaskTypeValue;
+  title: string;
+  description: string;
+  location_id: string | null;
+  max_points: number;
+  options: { choices: string[]; correct: number } | null;
+  min_photos: number | null;
+  max_photos: number | null;
+  min_seconds: number | null;
+  max_seconds: number | null;
+};
+
+export function TaskForm({
+  task,
   locations,
 }: {
+  task?: TaskFormValue;
   locations: { id: string; name: string }[];
 }) {
-  const [state, formAction, pending] = useActionState(
-    createTaskAction,
-    initial
+  const isEdit = !!task;
+  const action = isEdit ? updateTaskAction : createTaskAction;
+  const [state, formAction, pending] = useActionState(action, initial);
+  const [type, setType] = useState<TaskTypeValue>(task?.type ?? "photo");
+
+  const initialPhotoRange =
+    !!task &&
+    task.type === "photo" &&
+    (task.min_photos ?? 1) !== (task.max_photos ?? 1);
+  const initialVideoRange =
+    !!task &&
+    task.type === "video" &&
+    (task.min_seconds ?? 1) !== (task.max_seconds ?? 10);
+  const [rangeMode, setRangeMode] = useState<boolean>(
+    initialPhotoRange || initialVideoRange
   );
-  const [type, setType] = useState<TaskTypeValue>("photo");
-  const [rangeMode, setRangeMode] = useState(false);
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
+      {isEdit && <input type="hidden" name="id" value={task!.id} />}
+
       <div className="flex flex-col gap-2">
         <span className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
           Type
@@ -66,6 +98,7 @@ export function CreateTaskForm({
           name="title"
           required
           maxLength={60}
+          defaultValue={task?.title ?? ""}
           placeholder="bv. Dance bij de kerk"
           className={inputClass}
         />
@@ -77,6 +110,7 @@ export function CreateTaskForm({
           rows={3}
           required
           maxLength={500}
+          defaultValue={task?.description ?? ""}
           className={inputClass}
         />
       </Label>
@@ -88,7 +122,7 @@ export function CreateTaskForm({
         >
           <select
             name="location_id"
-            defaultValue=""
+            defaultValue={task?.location_id ?? ""}
             required={type === "arrival"}
             className={inputClass}
           >
@@ -105,7 +139,7 @@ export function CreateTaskForm({
             type="number"
             name="max_points"
             min={1}
-            defaultValue={10}
+            defaultValue={task?.max_points ?? 10}
             className={inputClass}
           />
         </Label>
@@ -115,6 +149,8 @@ export function CreateTaskForm({
         <PhotoCountFields
           rangeMode={rangeMode}
           onToggleRange={() => setRangeMode((v) => !v)}
+          defaultMax={task?.max_photos ?? 1}
+          defaultMin={task?.min_photos ?? task?.max_photos ?? 1}
         />
       )}
 
@@ -122,6 +158,8 @@ export function CreateTaskForm({
         <VideoDurationFields
           rangeMode={rangeMode}
           onToggleRange={() => setRangeMode((v) => !v)}
+          defaultMax={task?.max_seconds ?? 10}
+          defaultMin={task?.min_seconds ?? 1}
         />
       )}
 
@@ -134,6 +172,7 @@ export function CreateTaskForm({
             <textarea
               name="options"
               rows={4}
+              defaultValue={task?.options?.choices.join("\n") ?? ""}
               placeholder={"1880\n1905\n1936"}
               className={`${inputClass} font-mono`}
             />
@@ -143,7 +182,7 @@ export function CreateTaskForm({
               type="number"
               name="correct_index"
               min={0}
-              defaultValue={0}
+              defaultValue={task?.options?.correct ?? 0}
               className={inputClass}
             />
           </Label>
@@ -157,23 +196,39 @@ export function CreateTaskForm({
       )}
       {state.ok && (
         <p className="rounded-xl border border-cyan/30 bg-cyan/10 px-4 py-3 text-sm text-cyan-soft">
-          Challenge toegevoegd
+          {isEdit ? "Bijgewerkt" : "Challenge toegevoegd"}
         </p>
       )}
 
       <button type="submit" disabled={pending} className={buttonPrimary}>
-        {pending ? "Bezig..." : "Challenge toevoegen"}
+        {pending
+          ? "Bezig..."
+          : isEdit
+            ? "Wijzigingen opslaan"
+            : "Challenge toevoegen"}
       </button>
     </form>
   );
 }
 
+export function CreateTaskForm({
+  locations,
+}: {
+  locations: { id: string; name: string }[];
+}) {
+  return <TaskForm locations={locations} />;
+}
+
 function PhotoCountFields({
   rangeMode,
   onToggleRange,
+  defaultMax,
+  defaultMin,
 }: {
   rangeMode: boolean;
   onToggleRange: () => void;
+  defaultMax: number;
+  defaultMin: number;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -187,7 +242,7 @@ function PhotoCountFields({
             name="max_photos"
             min={1}
             max={10}
-            defaultValue={1}
+            defaultValue={defaultMax}
             required
             className={inputClass}
           />
@@ -199,7 +254,7 @@ function PhotoCountFields({
               name="min_photos"
               min={1}
               max={10}
-              defaultValue={1}
+              defaultValue={defaultMin}
               required
               className={inputClass}
             />
@@ -220,9 +275,13 @@ function PhotoCountFields({
 function VideoDurationFields({
   rangeMode,
   onToggleRange,
+  defaultMax,
+  defaultMin,
 }: {
   rangeMode: boolean;
   onToggleRange: () => void;
+  defaultMax: number;
+  defaultMin: number;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -233,7 +292,7 @@ function VideoDurationFields({
             name="max_seconds"
             min={1}
             max={60}
-            defaultValue={10}
+            defaultValue={defaultMax}
             required
             className={inputClass}
           />
@@ -245,7 +304,7 @@ function VideoDurationFields({
               name="min_seconds"
               min={1}
               max={60}
-              defaultValue={1}
+              defaultValue={defaultMin}
               required
               className={inputClass}
             />

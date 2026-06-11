@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
@@ -89,9 +90,12 @@ export default async function AdminTasksPage() {
             {tasks.map((t) => (
               <li
                 key={t.id}
-                className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                className="flex items-start justify-between gap-3 py-3 first:pt-0 last:pb-0"
               >
-                <div className="min-w-0 flex-1">
+                <Link
+                  href={`/admin/tasks/${t.id}`}
+                  className="group min-w-0 flex-1 rounded-xl py-1 transition hover:bg-bg-elev"
+                >
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     <span
                       className={`text-xs font-bold uppercase tracking-widest ${TYPE_COLOR[t.type]}`}
@@ -112,17 +116,27 @@ export default async function AdminTasksPage() {
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 font-bold">{t.title}</p>
+                  <p className="mt-1 font-bold group-hover:text-pink">
+                    {t.title}
+                  </p>
                   <p className="mt-1 text-sm text-fg-muted line-clamp-2">
                     {t.description}
                   </p>
+                </Link>
+                <div className="flex flex-shrink-0 flex-col items-end gap-2">
+                  <Link
+                    href={`/admin/tasks/${t.id}`}
+                    className="rounded-lg border border-cyan/40 bg-cyan/10 px-3 py-1.5 text-xs font-bold text-cyan hover:bg-cyan/20"
+                  >
+                    edit
+                  </Link>
+                  <form action={deleteTaskAction}>
+                    <input type="hidden" name="id" value={t.id} />
+                    <button type="submit" className={buttonDanger}>
+                      delete
+                    </button>
+                  </form>
                 </div>
-                <form action={deleteTaskAction}>
-                  <input type="hidden" name="id" value={t.id} />
-                  <button type="submit" className={buttonDanger}>
-                    delete
-                  </button>
-                </form>
               </li>
             ))}
           </ul>
