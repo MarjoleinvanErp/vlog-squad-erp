@@ -55,12 +55,7 @@ De Berichten-tab krijgt een ongelezen-badge (zoals het bestaande review-belletje
 
 ### Ongelezen-badge
 
-Nieuwe tabel `team_messages_seen`:
-
-- `team_id uuid pk references teams(id) on delete cascade`
-- `last_seen_at timestamptz not null default '1970-01-01'`
-
-Badge-count = aantal `broadcast_messages` in het event met `created_at > last_seen_at`. Wordt op de team-layout geladen zoals de bestaande review-badge.
+Volgt het bestaande `ReviewBell`-patroon (`src/app/team/review-bell.tsx`): seen-state in `localStorage` per `team_id`, geen DB-tabel. Een nieuwe client-component telt `broadcast_messages` met `created_at > localStorage[seenKey]` via een Realtime-subscription en toont een floating badge. Bij bezoek aan `/team/messages` wordt `last_seen_at` op `now()` gezet.
 
 ## Pagina `/team/ranking` (team-view)
 
