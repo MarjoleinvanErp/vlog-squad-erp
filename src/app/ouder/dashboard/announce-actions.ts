@@ -112,9 +112,9 @@ export async function finishEventAction(
       const result = await sendPush(
         (subs ?? []) as Array<{ endpoint: string; subscription: never }>,
         {
-          title: "Spel is afgelopen!",
-          body: "Bekijk de feed van alle squads",
-          url: "/team/feed",
+          title: "🏆 De eindstand is binnen!",
+          body: "Bekijk de ranking en alle posts van alle squads.",
+          url: "/team/ranking",
           tag: "event-finished",
         } as never
       );

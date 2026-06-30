@@ -227,8 +227,9 @@ function FinishModal({ onClose }: { onClose: () => void }) {
       >
         <h2 className="text-xl font-bold">Spel eindigen?</h2>
         <p className="mt-2 text-sm text-fg-muted">
-          Squads kunnen niets meer indienen. De feed wordt open: alle squads
-          zien elkaars approved posts op /team/feed. Iedereen krijgt een push.
+          Squads kunnen niets meer indienen. De eindstand wordt nu zichtbaar op{" "}
+          <span className="font-bold text-pink">/team/ranking</span>, en de feed
+          opent zodat ze elkaars posts kunnen zien. Iedereen krijgt een push.
         </p>
         <p className="mt-2 text-xs text-fg-dim">
           Je kunt het later eventueel weer heropenen (state → loopt).
@@ -336,9 +337,9 @@ function FinishedView() {
         </span>
       </div>
       <p className="text-sm">
-        Het spel is afgelopen. Squads zien elkaars approved posts op{" "}
-        <span className="font-bold text-pink">/team/feed</span>. Nieuwe
-        submissions en arrivals zijn geblokkeerd.
+        Het spel is afgelopen. Squads zien de eindstand op{" "}
+        <span className="font-bold text-pink">/team/ranking</span> en elkaars
+        approved posts op <span className="font-bold text-pink">/team/feed</span>.
       </p>
       {state.error && (
         <p className="rounded-xl border border-pink/30 bg-pink/10 px-4 py-3 text-sm text-pink-soft">
