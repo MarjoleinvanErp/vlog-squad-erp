@@ -5,6 +5,7 @@ import { GPSTracker } from "./gps-tracker";
 import { EventOverlay, type EventStatus } from "./event-overlay";
 import { TeamLiveRefresh } from "./team-live-refresh";
 import { ReviewBell } from "./review-bell";
+import { MessagesBell } from "./messages-bell";
 
 type Loc = {
   id: string;
@@ -23,6 +24,7 @@ export default async function TeamLayout({
   let locations: Loc[] = [];
   let visited: string[] = [];
   let eventStatus: EventStatus | null = null;
+  let eventIdForBell: string | null = null;
 
   if (teamId) {
     const sb = supabaseService();
@@ -33,6 +35,7 @@ export default async function TeamLayout({
       .maybeSingle();
     if (teamData) {
       const eventId = (teamData as { event_id: string }).event_id;
+      eventIdForBell = eventId;
       const [
         { data: locsData },
         { data: visitsData },
@@ -94,6 +97,9 @@ export default async function TeamLayout({
       {children}
       {teamId && <TeamLiveRefresh teamId={teamId} />}
       {teamId && <ReviewBell teamId={teamId} />}
+      {teamId && eventIdForBell && (
+        <MessagesBell teamId={teamId} eventId={eventIdForBell} />
+      )}
       {teamId && <EventOverlay initial={eventStatus} />}
     </>
   );
