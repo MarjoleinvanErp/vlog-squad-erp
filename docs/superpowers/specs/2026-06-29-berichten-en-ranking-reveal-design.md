@@ -21,7 +21,7 @@ Geen `created_by` kolom — ouder-auth gaat via session-based `getAdminSession()
 
 Index op `(event_id, created_at desc)` voor de chat-log query.
 
-RLS: schrijven alleen via service-role server actions (zoals de bestaande ouder-flows). Lezen door teams gaat via een server component met `supabaseService()` gefilterd op het event van het ingelogde team — geen client-direct select.
+RLS: schrijven alleen via service-role server actions (zoals de bestaande ouder-flows). Voor Realtime-levering aan anon-clients (de `MessagesStream` en `MessagesBell` browser-subscriptions) is een `for select to anon using (true)` policy vereist — zonder die policy slaat Supabase Realtime row-events stilletjes over. Initial server-render gebruikt `supabaseService()` voor consistentie met andere pagina's.
 
 ## Realtime
 
