@@ -2,13 +2,13 @@
 
 import Link, { useLinkStatus } from "next/link";
 
-export type TeamTab = "map" | "quests" | "feed" | "ranking";
+export type TeamTab = "map" | "quests" | "feed" | "messages";
 
 const ITEMS: { key: TeamTab; label: string; href: string }[] = [
   { key: "map", label: "Map", href: "/team/map" },
   { key: "quests", label: "Quests", href: "/team/quests" },
   { key: "feed", label: "Feed", href: "/team/feed" },
-  { key: "ranking", label: "Ranking", href: "/team/ranking" },
+  { key: "messages", label: "Berichten", href: "/team/messages" },
 ];
 
 function NavLabel({ label, active }: { label: string; active: boolean }) {

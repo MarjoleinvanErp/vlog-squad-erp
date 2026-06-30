@@ -128,7 +128,7 @@ export default async function RankingPage() {
         })}
       </ol>
 
-      <TeamBottomNav active="ranking" fixed />
+      <TeamBottomNav active="messages" fixed />
     </main>
   );
 }
