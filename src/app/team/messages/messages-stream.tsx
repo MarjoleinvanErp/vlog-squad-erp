@@ -22,10 +22,6 @@ export function MessagesStream({
 }) {
   const [messages, setMessages] = useState<MessageRow[]>(initial);
 
-  useEffect(() => {
-    setMessages(initial);
-  }, [initial]);
-
   // Markeer alle huidige berichten als gezien zodra de pagina openstaat.
   useEffect(() => {
     localStorage.setItem(SEEN_KEY(teamId), new Date().toISOString());
