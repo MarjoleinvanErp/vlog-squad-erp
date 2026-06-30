@@ -17,7 +17,13 @@ create index if not exists broadcast_messages_event_created_idx
   on broadcast_messages (event_id, created_at desc);
 
 alter table broadcast_messages enable row level security;
--- Geen anon policies — alleen service role mag lezen/schrijven.
+
+-- Anon read policy: nodig zodat Supabase Realtime row-events doorgeeft aan
+-- de browser-clients (MessagesStream + MessagesBell). Writes blijven via
+-- service role die RLS bypasst.
+drop policy if exists "anon read broadcast_messages" on broadcast_messages;
+create policy "anon read broadcast_messages" on broadcast_messages
+  for select to anon using (true);
 
 -- Realtime publication: squads abonneren live op nieuwe berichten.
 do $$
