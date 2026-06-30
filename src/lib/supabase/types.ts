@@ -114,3 +114,10 @@ export interface IncidentRow {
   acknowledged_by: string | null;
   acknowledged_at: string | null;
 }
+
+export interface BroadcastMessageRow {
+  id: string;
+  event_id: string;
+  body: string;
+  created_at: string;
+}
