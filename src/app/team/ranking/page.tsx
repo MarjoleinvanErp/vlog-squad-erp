@@ -28,6 +28,14 @@ export default async function RankingPage() {
 
   const eventId = (myTeam as { event_id: string }).event_id;
 
+  const { data: eventRow } = await sb
+    .from("events")
+    .select("state")
+    .eq("id", eventId)
+    .maybeSingle();
+  const isFinished = (eventRow as { state?: string } | null)?.state === "finished";
+  if (!isFinished) redirect("/team/messages");
+
   const { data: teams } = await sb
     .from("teams")
     .select("id, name, color, team_photo_url")
