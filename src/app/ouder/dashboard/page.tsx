@@ -8,6 +8,7 @@ import { acknowledgeIncidentAction } from "./incident-actions";
 import { OuderPushToggle } from "./push-toggle";
 import { AnnounceSection, type EventRally } from "./announce-section";
 import { OuderPushBanner } from "./push-banner";
+import { BroadcastSection, type RecentBroadcast } from "./broadcast-section";
 
 const TYPE_LABEL = {
   photo: "Drop",
@@ -87,6 +88,7 @@ export default async function OuderDashboardPage() {
     { data: visitsForScore },
     { data: incidentsRaw },
     { data: positionsRaw },
+    { data: broadcastsRaw },
   ] = await Promise.all([
     teamIds.length > 0
       ? sb
@@ -125,6 +127,12 @@ export default async function OuderDashboardPage() {
           .select("team_id, updated_at")
           .in("team_id", teamIds)
       : Promise.resolve({ data: [] }),
+    sb
+      .from("broadcast_messages")
+      .select("id, body, created_at")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
 
   type PendingRow = {
@@ -184,6 +192,7 @@ export default async function OuderDashboardPage() {
     team_id: string;
     updated_at: string;
   }>;
+  const recentBroadcasts = (broadcastsRaw ?? []) as RecentBroadcast[];
   const lastPingByTeam = new Map(
     positions.map((p) => [p.team_id, p.updated_at])
   );
@@ -414,6 +423,8 @@ export default async function OuderDashboardPage() {
           </ul>
         )}
       </section>
+
+      <BroadcastSection recent={recentBroadcasts} />
 
       <section className="rounded-3xl border border-border bg-bg-card p-5">
         <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
