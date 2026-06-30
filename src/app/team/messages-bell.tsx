@@ -21,6 +21,7 @@ export function MessagesBell({
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSeenAt(localStorage.getItem(SEEN_KEY(teamId)) ?? EPOCH);
     setHydrated(true);
   }, [teamId]);
@@ -30,6 +31,7 @@ export function MessagesBell({
     if (pathname !== "/team/messages") return;
     const now = new Date().toISOString();
     localStorage.setItem(SEEN_KEY(teamId), now);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSeenAt(now);
   }, [pathname, teamId, hydrated]);
 
