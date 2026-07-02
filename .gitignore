@@ -49,3 +49,6 @@ install.log
 # Serwist (gegenereerd door build)
 /public/sw.js
 /public/swe-worker-*.js
+
+# Superpowers scratch
+.superpowers/
