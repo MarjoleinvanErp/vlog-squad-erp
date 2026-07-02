@@ -102,17 +102,21 @@ export default async function AdminTasksPage() {
                     >
                       {TYPE_LABEL[t.type]}
                     </span>
+                    {t.location_id ? (
+                      <span className="rounded-full border border-cyan/40 bg-cyan/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-cyan">
+                        📍 {locNameById.get(t.location_id) ?? "?"}
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-border bg-bg-elev px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-fg-muted">
+                        🌐 anywhere
+                      </span>
+                    )}
                     <span className="text-xs text-fg-dim">
                       · {t.max_points} likes
                     </span>
                     {mediaHint(t) && (
                       <span className="text-xs text-fg-dim">
                         · {mediaHint(t)}
-                      </span>
-                    )}
-                    {t.location_id && (
-                      <span className="text-xs text-fg-dim">
-                        · {locNameById.get(t.location_id) ?? "?"}
                       </span>
                     )}
                   </div>
