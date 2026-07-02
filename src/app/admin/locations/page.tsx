@@ -2,16 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
+import type { TaskType } from "@/lib/supabase/types";
 import { AdminShell, Card, buttonDanger } from "../admin-layout";
 import { CreateLocationForm } from "./location-form";
 import { deleteLocationAction } from "./actions";
-
-type TaskType =
-  | "photo"
-  | "video"
-  | "text"
-  | "multiple_choice"
-  | "arrival";
 
 const TYPE_LABEL: Record<TaskType, string> = {
   photo: "Drop",
