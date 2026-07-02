@@ -6,6 +6,30 @@ import { AdminShell, Card, buttonDanger } from "../admin-layout";
 import { CreateLocationForm } from "./location-form";
 import { deleteLocationAction } from "./actions";
 
+type TaskType =
+  | "photo"
+  | "video"
+  | "text"
+  | "multiple_choice"
+  | "arrival";
+
+const TYPE_LABEL: Record<TaskType, string> = {
+  photo: "Drop",
+  video: "Video",
+  text: "Hot Take",
+  multiple_choice: "Quiz",
+  arrival: "Arrival",
+};
+
+// Canonieke volgorde voor het samenvatten van types per locatie
+const TYPE_ORDER: TaskType[] = [
+  "photo",
+  "video",
+  "text",
+  "multiple_choice",
+  "arrival",
+];
+
 type Loc = {
   id: string;
   name: string;
@@ -21,14 +45,39 @@ export default async function AdminLocationsPage() {
   if (!eventId) redirect("/ouder");
 
   const sb = supabaseService();
-  const { data } = await sb
-    .from("locations")
-    .select("*")
-    .eq("event_id", eventId)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true });
+  const [{ data: locsData }, { data: tasksData }] = await Promise.all([
+    sb
+      .from("locations")
+      .select("*")
+      .eq("event_id", eventId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
+    sb
+      .from("tasks")
+      .select("id, location_id, type")
+      .eq("event_id", eventId),
+  ]);
 
-  const locations = (data ?? []) as Loc[];
+  const locations = (locsData ?? []) as Loc[];
+  const tasks = (tasksData ?? []) as Array<{
+    id: string;
+    location_id: string | null;
+    type: TaskType;
+  }>;
+
+  // Groepeer types per location_id, dedupe
+  const typesByLocation = new Map<string, Set<TaskType>>();
+  const countByLocation = new Map<string, number>();
+  for (const t of tasks) {
+    if (!t.location_id) continue;
+    countByLocation.set(
+      t.location_id,
+      (countByLocation.get(t.location_id) ?? 0) + 1
+    );
+    const set = typesByLocation.get(t.location_id) ?? new Set<TaskType>();
+    set.add(t.type);
+    typesByLocation.set(t.location_id, set);
+  }
 
   return (
     <AdminShell title="Drops · Locaties" badge="admin · locaties">
@@ -53,6 +102,10 @@ export default async function AdminLocationsPage() {
                     {l.lat.toFixed(5)}, {l.lng.toFixed(5)} · {l.radius_meters}m ·{" "}
                     <span className="text-pink">{l.arrival_points} likes</span>
                   </p>
+                  <ChallengeSummary
+                    count={countByLocation.get(l.id) ?? 0}
+                    types={typesByLocation.get(l.id) ?? new Set()}
+                  />
                   {l.description && (
                     <p className="mt-1 truncate text-sm text-fg-dim">
                       {l.description}
@@ -81,5 +134,29 @@ export default async function AdminLocationsPage() {
         <CreateLocationForm />
       </Card>
     </AdminShell>
+  );
+}
+
+function ChallengeSummary({
+  count,
+  types,
+}: {
+  count: number;
+  types: Set<TaskType>;
+}) {
+  if (count === 0) {
+    return (
+      <p className="mt-1 inline-block rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[11px] font-bold text-red-400">
+        ⚠ geen challenges
+      </p>
+    );
+  }
+  const orderedLabels = TYPE_ORDER.filter((t) => types.has(t)).map(
+    (t) => TYPE_LABEL[t]
+  );
+  return (
+    <p className="mt-1 text-xs text-fg-muted">
+      {count} challenge{count === 1 ? "" : "s"} · {orderedLabels.join(", ")}
+    </p>
   );
 }
