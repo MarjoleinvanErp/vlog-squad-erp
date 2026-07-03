@@ -79,7 +79,7 @@ export function ReviewBell({ teamId }: { teamId: string }) {
       onClick={handleClick}
       aria-label={`${count} nieuwe ${count === 1 ? "review" : "reviews"}`}
       className="fixed right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-pink/60 bg-bg-card/90 text-pink shadow-[0_0_14px_rgba(254,44,85,0.45)] backdrop-blur active:scale-95"
-      style={{ top: "calc(0.5rem + env(safe-area-inset-top))" }}
+      style={{ top: "calc(3.5rem + env(safe-area-inset-top))" }}
     >
       <BellIcon />
       <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-pink px-1 text-[10px] font-extrabold leading-none text-white">

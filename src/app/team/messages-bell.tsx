@@ -82,7 +82,7 @@ export function MessagesBell({
       href="/team/messages"
       onClick={handleClick}
       aria-label={`${count} ${count === 1 ? "nieuw bericht" : "nieuwe berichten"}`}
-      className="fixed left-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-cyan/60 bg-bg-card/90 text-cyan shadow-[0_0_14px_rgba(37,244,238,0.45)] backdrop-blur active:scale-95"
+      className="fixed right-4 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-cyan/60 bg-bg-card/90 text-cyan shadow-[0_0_14px_rgba(37,244,238,0.45)] backdrop-blur active:scale-95"
       style={{ top: "calc(0.5rem + env(safe-area-inset-top))" }}
     >
       <MessageIcon />
