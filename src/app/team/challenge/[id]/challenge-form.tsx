@@ -15,6 +15,10 @@ import {
 } from "../actions";
 import { maybeCompressImage } from "@/lib/image-compress";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { uploadToSignedUrlWithProgress } from "@/lib/upload-progress";
+import { UploadOverlay, type UploadOverlayState } from "./upload-overlay";
+
+const SUCCESS_OVERLAY_MS = 1500;
 
 const initial: SubmitState = { ok: false, error: null, redirect: null };
 
@@ -49,15 +53,25 @@ function NonMediaForm({ task }: { task: Task }) {
     submitChallengeAction,
     initial
   );
+  // Overlay direct afgeleid van de action-state: succes zodra er een
+  // redirect klaarstaat; het effect regelt alleen de vertraagde navigatie.
+  const overlay: UploadOverlayState | null = state.redirect
+    ? { phase: "success" }
+    : null;
 
   useEffect(() => {
     if (state.redirect) {
-      router.push(state.redirect);
+      const t = setTimeout(
+        () => router.push(state.redirect!),
+        SUCCESS_OVERLAY_MS
+      );
+      return () => clearTimeout(t);
     }
   }, [state.redirect, router]);
 
   return (
     <form action={formAction} className="flex flex-col gap-5">
+      <UploadOverlay state={overlay} />
       <input type="hidden" name="task_id" value={task.id} />
       {task.type === "text" && <TextField />}
       {task.type === "multiple_choice" && task.options && (
@@ -106,6 +120,7 @@ function PhotoForm({
   );
   const [busyIndex, setBusyIndex] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [overlay, setOverlay] = useState<UploadOverlayState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const restored = useRef(false);
 
@@ -210,7 +225,9 @@ function PhotoForm({
       }
       localStorage.removeItem(draftKey(task.id));
       if (result?.redirect) {
-        router.push(result.redirect);
+        const target = result.redirect;
+        setOverlay({ phase: "success" });
+        setTimeout(() => router.push(target), SUCCESS_OVERLAY_MS);
       }
     } finally {
       setSubmitting(false);
@@ -224,6 +241,7 @@ function PhotoForm({
 
   return (
     <div className="flex flex-col gap-5">
+      <UploadOverlay state={overlay} />
       <p className="text-xs font-semibold uppercase tracking-widest text-cyan">
         {rangeLabel} · {filledCount}/{maxPhotos}
       </p>
@@ -389,6 +407,7 @@ function VideoForm({
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [recordedMime, setRecordedMime] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [overlay, setOverlay] = useState<UploadOverlayState | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -524,32 +543,54 @@ function VideoForm({
     }
     setError(null);
     setSubmitting(true);
+    setOverlay({ phase: "uploading", progress: null, label: "Video posten..." });
     try {
       const ext = extFromMime(recordedMime);
       const sig = await createSubmissionUploadUrl(task.id, ext);
       if (!sig.ok || !sig.path || !sig.token) {
         throw new Error(sig.error ?? "Geen signed URL");
       }
-      const sb = supabaseBrowser();
-      const { error: upErr } = await sb.storage
-        .from("submission-photos")
-        .uploadToSignedUrl(sig.path, sig.token, recordedBlob, {
-          contentType: recordedMime || "application/octet-stream",
-        });
-      if (upErr) throw new Error(upErr.message);
+      const contentType = recordedMime || "application/octet-stream";
+      if (sig.signedUrl) {
+        await uploadToSignedUrlWithProgress(
+          sig.signedUrl,
+          recordedBlob,
+          contentType,
+          (p) =>
+            setOverlay({
+              phase: "uploading",
+              progress: p,
+              label: "Video posten...",
+            })
+        );
+      } else {
+        const sb = supabaseBrowser();
+        const { error: upErr } = await sb.storage
+          .from("submission-photos")
+          .uploadToSignedUrl(sig.path, sig.token, recordedBlob, {
+            contentType,
+          });
+        if (upErr) throw new Error(upErr.message);
+      }
 
       const fd = new FormData();
       fd.set("task_id", task.id);
       fd.append("photo_paths", sig.path);
       const result = await submitChallengeAction(initial, fd);
       if (result?.error) {
+        setOverlay(null);
         setError(result.error);
         return;
       }
       if (result?.redirect) {
-        router.push(result.redirect);
+        const target = result.redirect;
+        setOverlay({ phase: "success" });
+        setTimeout(() => router.push(target), SUCCESS_OVERLAY_MS);
+      } else {
+        setOverlay(null);
       }
     } catch (e) {
+      setOverlay(null);
       setError(e instanceof Error ? e.message : "Upload mislukt");
     } finally {
       setSubmitting(false);
@@ -567,6 +608,7 @@ function VideoForm({
 
   return (
     <div className="flex flex-col gap-5">
+      <UploadOverlay state={overlay} />
       <p className="text-xs font-semibold uppercase tracking-widest text-cyan">
         Video · {rangeLabel}
       </p>
