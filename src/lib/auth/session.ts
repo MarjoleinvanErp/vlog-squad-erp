@@ -40,3 +40,15 @@ export async function clearAdminSession() {
   const store = await cookies();
   store.delete(ADMIN_COOKIE);
 }
+
+const RECAP_COOKIE = "st_recap";
+
+export async function setRecapSession() {
+  const store = await cookies();
+  store.set(RECAP_COOKIE, "1", COOKIE_OPTS);
+}
+
+export async function hasRecapSession(): Promise<boolean> {
+  const store = await cookies();
+  return store.get(RECAP_COOKIE)?.value === "1";
+}

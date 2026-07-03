@@ -52,3 +52,6 @@ install.log
 
 # Superpowers scratch
 .superpowers/
+
+# Recap-export (lokale media-download, niet in repo)
+/recap-export/
