@@ -71,6 +71,11 @@ export async function resetTestDataAction(
   let posCount = 0;
   let incCount = 0;
 
+  const { count: msgCount } = await sb
+    .from("broadcast_messages")
+    .delete({ count: "exact" })
+    .eq("event_id", eventId);
+
   if (teamIds.length > 0) {
     const [r1, r2, r3, r4] = await Promise.all([
       sb.from("submissions").delete({ count: "exact" }).in("team_id", teamIds),
@@ -120,9 +125,10 @@ export async function resetTestDataAction(
   revalidatePath("/team/feed");
   revalidatePath("/team/ranking");
   revalidatePath("/team/quests");
+  revalidatePath("/team/messages");
 
   return {
     ok: true,
-    message: `Gewist: ${subCount} posts, ${visitCount} visits, ${posCount} GPS-pings, ${incCount} incidents. ${teams.length} squads gereset.`,
+    message: `Gewist: ${subCount} posts, ${visitCount} visits, ${posCount} GPS-pings, ${incCount} incidents, ${msgCount ?? 0} berichten. ${teams.length} squads gereset.`,
   };
 }
