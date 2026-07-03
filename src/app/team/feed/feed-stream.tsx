@@ -17,6 +17,7 @@ export type FeedRow = {
   reviewed_by: string | null;
   task_title: string | null;
   task_type: string | null;
+  likes?: string[];
   team: {
     name: string;
     color: string;
@@ -74,6 +75,15 @@ export function FeedStream({
         },
         () => router.refresh()
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "post_likes",
+        },
+        () => router.refresh()
+      )
       .subscribe();
     return () => {
       sb.removeChannel(channel);
@@ -107,7 +117,11 @@ export function FeedStream({
               className="overflow-hidden rounded-3xl border border-border bg-bg-card shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
             >
               <div className="relative">
-                <Media url={heroUrl} text={s.text_answer} />
+                <Media
+                  url={heroUrl}
+                  text={s.text_answer}
+                  taskTitle={s.task_title}
+                />
 
                 {s.status === "rejected" && <RejectedStamp />}
 
@@ -162,20 +176,12 @@ export function FeedStream({
 
                 <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-3 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-4 pb-4 pt-12">
                   <div className="min-w-0 flex-1">
-                    {s.task_title && (
+                    {s.task_title && heroUrl && (
                       <p
                         className="truncate text-xs font-semibold uppercase tracking-widest text-white/70"
                         style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
                       >
                         {s.task_title}
-                      </p>
-                    )}
-                    {s.text_answer && !heroUrl && (
-                      <p
-                        className="mt-1 line-clamp-3 text-sm text-white"
-                        style={{ textShadow: "0 1px 8px rgba(0,0,0,0.6)" }}
-                      >
-                        {s.text_answer}
                       </p>
                     )}
                   </div>
@@ -185,6 +191,18 @@ export function FeedStream({
                   />
                 </div>
               </div>
+
+              {(s.likes?.length ?? 0) > 0 && (
+                <div className="flex items-center gap-2 border-t border-border px-4 py-2.5 text-sm">
+                  <span aria-hidden>❤️</span>
+                  <p className="min-w-0 flex-1 truncate text-fg">
+                    <span className="font-bold">{s.likes!.length}</span>{" "}
+                    <span className="text-fg-muted">
+                      · {s.likes!.join(" · ")}
+                    </span>
+                  </p>
+                </div>
+              )}
 
               {showComment && (
                 <ReviewComment
@@ -204,9 +222,11 @@ export function FeedStream({
 function Media({
   url,
   text,
+  taskTitle,
 }: {
   url: string | null;
   text: string | null;
+  taskTitle: string | null;
 }) {
   if (url && isVideoUrl(url)) {
     return (
@@ -235,15 +255,18 @@ function Media({
   }
   return (
     <div
-      className="flex aspect-[4/5] w-full items-center justify-center px-6"
+      className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-4 px-6"
       style={{
         background:
           "linear-gradient(135deg, rgba(254,44,85,0.25) 0%, rgba(37,244,238,0.18) 100%)",
       }}
     >
-      <p className="text-center text-lg font-semibold text-white">
-        {text}
-      </p>
+      {taskTitle && (
+        <p className="text-center text-xs font-bold uppercase tracking-[0.2em] text-cyan">
+          {taskTitle}
+        </p>
+      )}
+      <p className="text-center text-lg font-semibold text-white">{text}</p>
     </div>
   );
 }

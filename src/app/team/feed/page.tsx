@@ -136,6 +136,37 @@ export default async function FeedPage() {
     });
   }
 
+  // Ouder-likes per post ophalen; als de tabel (nog) niet bestaat: leeg.
+  if (submissions.length > 0) {
+    try {
+      const { data: likeRows, error: likeError } = await sb
+        .from("post_likes")
+        .select("submission_id, liker_name")
+        .in(
+          "submission_id",
+          submissions.map((s) => s.id)
+        )
+        .order("created_at", { ascending: true });
+      if (!likeError) {
+        const bySubmission = new Map<string, string[]>();
+        for (const row of (likeRows ?? []) as Array<{
+          submission_id: string;
+          liker_name: string;
+        }>) {
+          const list = bySubmission.get(row.submission_id) ?? [];
+          list.push(row.liker_name);
+          bySubmission.set(row.submission_id, list);
+        }
+        submissions = submissions.map((s) => ({
+          ...s,
+          likes: bySubmission.get(s.id) ?? [],
+        }));
+      }
+    } catch {
+      // tabel ontbreekt nog
+    }
+  }
+
   return (
     <main className="relative mx-auto flex min-h-dvh max-w-md flex-col bg-bg">
       <header

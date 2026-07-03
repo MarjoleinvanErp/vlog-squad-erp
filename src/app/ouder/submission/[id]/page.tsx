@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation";
 import { getAdminSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
 import { ReviewForm } from "./review-form";
+import { LikeButton } from "./like-button";
 
 const TYPE_LABEL = {
   photo: "Drop",
@@ -81,6 +82,23 @@ export default async function ReviewPage({
     max_points: number;
     options: { choices: string[]; correct: number } | null;
   };
+
+  // Likes ophalen; als de post_likes-tabel (nog) niet bestaat gewoon leeg.
+  let likes: string[] = [];
+  try {
+    const { data: likeRows, error: likeError } = await sb
+      .from("post_likes")
+      .select("liker_name")
+      .eq("submission_id", sub.id)
+      .order("created_at", { ascending: true });
+    if (!likeError) {
+      likes = ((likeRows ?? []) as Array<{ liker_name: string }>).map(
+        (l) => l.liker_name
+      );
+    }
+  } catch {
+    // tabel ontbreekt nog — like-knop werkt dan gewoon vanaf 0
+  }
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-6 pb-10 pt-[calc(1.5rem+var(--st))]">
@@ -183,6 +201,8 @@ export default async function ReviewPage({
         )}
       </section>
 
+      <LikeButton submissionId={sub.id} initialLikes={likes} />
+
       {sub.status === "pending" ? (
         <ReviewForm submissionId={sub.id} maxPoints={task.max_points} />
       ) : (
@@ -198,7 +218,9 @@ export default async function ReviewPage({
             )}
           </p>
           {sub.review_note && (
-            <p className="mt-2 text-sm text-fg-dim">"{sub.review_note}"</p>
+            <p className="mt-2 text-sm text-fg-dim">
+              &ldquo;{sub.review_note}&rdquo;
+            </p>
           )}
           <p className="mt-3 text-xs text-fg-dim">Al beoordeeld</p>
         </section>

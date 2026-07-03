@@ -121,6 +121,57 @@ export async function approveSubmissionAction(formData: FormData) {
   redirect("/ouder/dashboard");
 }
 
+export type ToggleLikeResult = {
+  ok: boolean;
+  liked: boolean;
+  likes: string[];
+};
+
+export async function toggleLikeAction(
+  submissionId: string,
+  rawName: string
+): Promise<ToggleLikeResult> {
+  const eventId = await getAdminSession();
+  const name = rawName.trim().slice(0, 40);
+  if (!eventId || !submissionId || !name) {
+    return { ok: false, liked: false, likes: [] };
+  }
+  const ownedId = await verifyOwnership(submissionId, eventId);
+  if (!ownedId) return { ok: false, liked: false, likes: [] };
+
+  const sb = supabaseService();
+  const { data: existing } = await sb
+    .from("post_likes")
+    .select("id")
+    .eq("submission_id", submissionId)
+    .eq("liker_name", name)
+    .maybeSingle();
+
+  if (existing) {
+    await sb.from("post_likes").delete().eq("id", (existing as { id: string }).id);
+  } else {
+    await sb
+      .from("post_likes")
+      .insert({ submission_id: submissionId, liker_name: name });
+  }
+
+  const { data: all } = await sb
+    .from("post_likes")
+    .select("liker_name")
+    .eq("submission_id", submissionId)
+    .order("created_at", { ascending: true });
+
+  revalidatePath("/team/feed");
+
+  return {
+    ok: true,
+    liked: !existing,
+    likes: ((all ?? []) as Array<{ liker_name: string }>).map(
+      (l) => l.liker_name
+    ),
+  };
+}
+
 export async function rejectSubmissionAction(formData: FormData) {
   const eventId = await getAdminSession();
   if (!eventId) return;
