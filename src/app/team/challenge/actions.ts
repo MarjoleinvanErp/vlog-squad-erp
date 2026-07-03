@@ -189,11 +189,10 @@ export async function submitChallengeAction(
   revalidatePath("/team/ranking");
   revalidatePath("/team/quests");
 
+  // Na het posten naar de feed, zodat het team de eigen post meteen terugziet.
   return {
     ok: true,
     error: null,
-    redirect: task.location_id
-      ? `/team/location/${task.location_id}`
-      : "/team/quests",
+    redirect: "/team/feed",
   };
 }
