@@ -45,6 +45,7 @@ export function MessagesBell({
         .from("broadcast_messages")
         .select("id", { count: "exact", head: true })
         .eq("event_id", eventId)
+        .is("team_id", null)
         .gt("created_at", seenAt);
       if (!cancelled) setCount(n ?? 0);
     }

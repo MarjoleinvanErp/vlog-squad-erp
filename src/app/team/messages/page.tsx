@@ -4,6 +4,7 @@ import { getTeamSession } from "@/lib/auth/session";
 import { supabaseService } from "@/lib/supabase/server";
 import { TeamBottomNav } from "../bottom-nav";
 import { MessagesStream, type MessageRow } from "./messages-stream";
+import { ReplyForm } from "./reply-form";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +28,13 @@ export default async function MessagesPage() {
     .maybeSingle();
   const isFinished = (eventRow as { state?: string } | null)?.state === "finished";
 
+  // Ouder-berichten (team_id null) + eigen antwoorden; niet die van
+  // andere teams.
   const { data: rows } = await sb
     .from("broadcast_messages")
-    .select("id, body, created_at")
+    .select("id, body, created_at, team_id")
     .eq("event_id", eventId)
+    .or(`team_id.is.null,team_id.eq.${teamId}`)
     .order("created_at", { ascending: false });
   const messages = (rows ?? []) as MessageRow[];
 
@@ -54,6 +58,8 @@ export default async function MessagesPage() {
           🏆 Bekijk de eindstand →
         </Link>
       )}
+
+      <ReplyForm />
 
       <MessagesStream eventId={eventId} teamId={teamId} initial={messages} />
 

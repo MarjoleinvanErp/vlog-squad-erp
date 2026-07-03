@@ -129,7 +129,7 @@ export default async function OuderDashboardPage() {
       : Promise.resolve({ data: [] }),
     sb
       .from("broadcast_messages")
-      .select("id, body, created_at")
+      .select("id, body, created_at, team_id")
       .eq("event_id", eventId)
       .order("created_at", { ascending: false })
       .limit(20),
@@ -192,7 +192,24 @@ export default async function OuderDashboardPage() {
     team_id: string;
     updated_at: string;
   }>;
-  const recentBroadcasts = (broadcastsRaw ?? []) as RecentBroadcast[];
+  const recentBroadcasts: RecentBroadcast[] = (
+    (broadcastsRaw ?? []) as Array<{
+      id: string;
+      body: string;
+      created_at: string;
+      team_id?: string | null;
+    }>
+  ).map((m) => {
+    const senderTeam = m.team_id ? teamById.get(m.team_id) : null;
+    return {
+      id: m.id,
+      body: m.body,
+      created_at: m.created_at,
+      sender: senderTeam
+        ? { name: senderTeam.name, color: senderTeam.color }
+        : null,
+    };
+  });
   const lastPingByTeam = new Map(
     positions.map((p) => [p.team_id, p.updated_at])
   );

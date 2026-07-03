@@ -12,6 +12,8 @@ export type RecentBroadcast = {
   id: string;
   body: string;
   created_at: string;
+  // null = door de ouders verstuurd; anders het team dat antwoordde.
+  sender: { name: string; color: string } | null;
 };
 
 export function BroadcastSection({
@@ -71,15 +73,29 @@ export function BroadcastSection({
       {recent.length > 0 && (
         <div className="mt-5 border-t border-border pt-4">
           <p className="text-[10px] uppercase tracking-widest text-fg-muted">
-            Laatste verstuurd
+            Laatste berichten
           </p>
           <ul className="mt-2 flex flex-col gap-2">
             {recent.map((m) => (
               <li
                 key={m.id}
-                className="rounded-xl border border-border bg-bg-elev px-3 py-2"
+                className={`rounded-xl border px-3 py-2 ${
+                  m.sender
+                    ? "border-border-strong bg-bg-card"
+                    : "border-border bg-bg-elev"
+                }`}
               >
-                <p className="text-xs text-fg-muted">
+                <p className="flex items-center gap-2 text-xs text-fg-muted">
+                  {m.sender ? (
+                    <span
+                      className="font-bold"
+                      style={{ color: m.sender.color }}
+                    >
+                      @{m.sender.name}
+                    </span>
+                  ) : (
+                    <span className="font-bold text-cyan">ouders</span>
+                  )}
                   {new Date(m.created_at).toLocaleTimeString("nl-NL", {
                     hour: "2-digit",
                     minute: "2-digit",
