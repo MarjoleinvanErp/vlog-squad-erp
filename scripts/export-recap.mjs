@@ -225,6 +225,7 @@ function submissionHtml(s) {
         </div>
         ${badge(s)}
       </div>
+      ${task?.description ? `<p class="task-desc">${escapeHtml(task.description)}</p>` : ""}
       ${media ? `<div class="media ${(s.photo_urls ?? []).length === 1 ? "single" : ""}">${media}</div>` : ""}
       ${s.text_answer ? `<p class="answer">&ldquo;${escapeHtml(s.text_answer)}&rdquo;</p>` : ""}
       ${
@@ -305,6 +306,7 @@ const html = `<!doctype html>
   .media.single { grid-template-columns: 1fr; }
   .media img, .media video { width: 100%; border-radius: 1rem; display: block; background: #000; }
   .answer { background: var(--elev); border: 1px solid var(--border); border-radius: 1rem; padding: 0.75rem 1rem; font-size: 0.9rem; font-style: italic; }
+  .task-desc { color: var(--muted); font-size: 0.85rem; white-space: pre-line; }
   footer { text-align: center; color: var(--muted); font-size: 0.75rem; padding-bottom: 2rem; }
 </style>
 </head>

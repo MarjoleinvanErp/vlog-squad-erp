@@ -268,6 +268,12 @@ function TeamSection({
                 <StatusBadge submission={s} />
               </div>
 
+              {task?.description && (
+                <p className="whitespace-pre-line text-sm text-fg-muted">
+                  {task.description}
+                </p>
+              )}
+
               {s.photo_urls.length > 0 && (
                 <div
                   className={`grid gap-2 ${
