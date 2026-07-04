@@ -6,16 +6,21 @@ import { TeamBottomNav } from "../bottom-nav";
 
 type Task = {
   id: string;
+  location_id: string | null;
   title: string;
   description: string;
-  type: "photo" | "text" | "multiple_choice" | "arrival";
+  type: "photo" | "video" | "text" | "multiple_choice" | "arrival";
   max_points: number;
+  sort_order: number;
 };
 
 type Sub = { task_id: string; status: "pending" | "approved" | "rejected"; awarded_points: number | null };
 
+type Loc = { id: string; name: string; icon: string | null; sort_order: number };
+
 const TYPE_LABEL = {
   photo: "Drop",
+  video: "Video",
   text: "Hot Take",
   multiple_choice: "Quiz",
   arrival: "Arrival",
@@ -23,6 +28,7 @@ const TYPE_LABEL = {
 
 const TYPE_COLOR = {
   photo: "text-pink",
+  video: "text-pink",
   text: "text-cyan",
   multiple_choice: "text-yellow-400",
   arrival: "text-green-400",
@@ -42,26 +48,54 @@ export default async function QuestsPage() {
 
   const eventId = (myTeam as { event_id: string }).event_id;
 
-  const [{ data: tasksData }, { data: subsData }] = await Promise.all([
+  const [
+    { data: tasksData },
+    { data: subsData },
+    { data: locsData },
+    { data: visitsData },
+  ] = await Promise.all([
     sb
       .from("tasks")
-      .select("*")
+      .select("id, location_id, title, description, type, max_points, sort_order")
       .eq("event_id", eventId)
-      .is("location_id", null)
       .neq("type", "arrival")
       .order("sort_order", { ascending: true }),
     sb
       .from("submissions")
       .select("task_id, status, awarded_points")
       .eq("team_id", teamId),
+    sb
+      .from("locations")
+      .select("id, name, icon, sort_order")
+      .eq("event_id", eventId)
+      .order("sort_order", { ascending: true }),
+    sb
+      .from("location_visits")
+      .select("location_id")
+      .eq("team_id", teamId),
   ]);
 
   const tasks = (tasksData ?? []) as Task[];
   const subs = (subsData ?? []) as Sub[];
+  const locations = (locsData ?? []) as Loc[];
   const subByTask = new Map(subs.map((s) => [s.task_id, s]));
+  const visitedLocations = new Set(
+    ((visitsData ?? []) as Array<{ location_id: string }>).map(
+      (v) => v.location_id
+    )
+  );
 
-  const available = tasks.filter((t) => !subByTask.has(t.id));
-  const done = tasks.filter((t) => subByTask.has(t.id));
+  const anywhere = tasks.filter((t) => t.location_id == null);
+  const available = anywhere.filter((t) => !subByTask.has(t.id));
+  const done = anywhere.filter((t) => subByTask.has(t.id));
+
+  const locationGroups = locations
+    .map((loc) => ({
+      loc,
+      tasks: tasks.filter((t) => t.location_id === loc.id),
+      visited: visitedLocations.has(loc.id),
+    }))
+    .filter((g) => g.tasks.length > 0);
 
   return (
     <main
@@ -70,103 +104,138 @@ export default async function QuestsPage() {
     >
       <header>
         <p className="text-xs font-semibold uppercase tracking-widest text-cyan">
-          anywhere
+          alle challenges
         </p>
         <h1 className="mt-1 text-3xl font-bold leading-tight">
           <span className="text-gradient">Quests</span>
         </h1>
         <p className="mt-2 text-fg-muted">
-          Deze challenges mag je overal doen, geen locatie nodig.
+          Sommige mag je overal doen, andere pas als je op de plek bent geweest.
         </p>
       </header>
 
-      {available.length === 0 && done.length === 0 ? (
-        <p className="rounded-2xl border border-border bg-bg-card p-6 text-fg-muted">
-          Nog geen quests beschikbaar.
-        </p>
-      ) : (
-        <>
-          {available.length > 0 && (
-            <section className="flex flex-col gap-3">
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
-                Te doen
-              </h2>
-              {available.map((t) => (
-                <Link
-                  key={t.id}
-                  href={`/team/challenge/${t.id}`}
-                  className="rounded-2xl border border-border-strong bg-bg-card p-4 transition hover:border-pink"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`text-[10px] font-bold uppercase tracking-widest ${TYPE_COLOR[t.type]}`}
-                        >
-                          {TYPE_LABEL[t.type]}
-                        </span>
-                        <span className="text-[10px] text-fg-dim">
-                          · max {t.max_points} likes
-                        </span>
-                      </div>
-                      <p className="mt-0.5 font-bold">{t.title}</p>
-                      <p className="mt-1 line-clamp-2 text-sm text-fg-muted">
-                        {t.description}
-                      </p>
-                    </div>
-                    <span className="text-sm font-bold text-pink">→</span>
-                  </div>
-                </Link>
-              ))}
-            </section>
-          )}
+      {available.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
+            Overal te doen
+          </h2>
+          {available.map((t) => (
+            <TaskCard key={t.id} task={t} sub={null} locked={false} />
+          ))}
+        </section>
+      )}
 
-          {done.length > 0 && (
-            <section className="flex flex-col gap-3 opacity-70">
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
-                Al ingediend
-              </h2>
-              {done.map((t) => {
-                const sub = subByTask.get(t.id)!;
-                return (
-                  <div
-                    key={t.id}
-                    className="rounded-2xl border border-border bg-bg-card p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-[10px] font-bold uppercase tracking-widest ${TYPE_COLOR[t.type]}`}
-                          >
-                            {TYPE_LABEL[t.type]}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 font-bold">{t.title}</p>
-                      </div>
-                      <div className="text-right text-xs">
-                        {sub.status === "approved" && (
-                          <p className="font-bold text-cyan">
-                            +{sub.awarded_points ?? 0}
-                          </p>
-                        )}
-                        {sub.status === "pending" && (
-                          <p className="text-yellow-400">in review</p>
-                        )}
-                        {sub.status === "rejected" && (
-                          <p className="text-fg-dim">rejected</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </section>
-          )}
-        </>
+      {locationGroups.map(({ loc, tasks: locTasks, visited }) => (
+        <section key={loc.id} className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="min-w-0 truncate text-xs font-semibold uppercase tracking-widest text-fg-muted">
+              {loc.icon ?? "📍"} {loc.name}
+            </h2>
+            {visited ? (
+              <span className="flex-shrink-0 rounded-full bg-cyan/15 px-2 py-0.5 text-[10px] font-bold text-cyan">
+                ✓ geweest
+              </span>
+            ) : (
+              <Link
+                href={`/team/location/${loc.id}`}
+                className="flex-shrink-0 rounded-full bg-bg-elev px-2 py-0.5 text-[10px] font-bold text-fg-muted"
+              >
+                🔒 loop er heen
+              </Link>
+            )}
+          </div>
+          {locTasks.map((t) => (
+            <TaskCard
+              key={t.id}
+              task={t}
+              sub={subByTask.get(t.id) ?? null}
+              locked={!visited}
+            />
+          ))}
+        </section>
+      ))}
+
+      {done.length > 0 && (
+        <section className="flex flex-col gap-3 opacity-70">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
+            Al ingediend (overal-quests)
+          </h2>
+          {done.map((t) => (
+            <TaskCard
+              key={t.id}
+              task={t}
+              sub={subByTask.get(t.id) ?? null}
+              locked={false}
+            />
+          ))}
+        </section>
       )}
 
       <TeamBottomNav active="quests" fixed />
     </main>
   );
+}
+
+function TaskCard({
+  task: t,
+  sub,
+  locked,
+}: {
+  task: Task;
+  sub: Sub | null;
+  locked: boolean;
+}) {
+  const done = sub?.status === "approved";
+  const pending = sub?.status === "pending";
+  const rejected = sub?.status === "rejected";
+
+  const inner = (
+    <div
+      className={`flex items-center justify-between gap-3 rounded-2xl border p-4 transition ${
+        done
+          ? "border-cyan/40 bg-cyan/5"
+          : rejected
+            ? "border-fg-dim/30 bg-bg-card opacity-70"
+            : locked
+              ? "border-border bg-bg-card opacity-60"
+              : "border-border-strong bg-bg-card hover:border-pink"
+      }`}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-[10px] font-bold uppercase tracking-widest ${TYPE_COLOR[t.type]}`}
+          >
+            {TYPE_LABEL[t.type]}
+          </span>
+          <span className="text-[10px] text-fg-dim">
+            · max {t.max_points} likes
+          </span>
+        </div>
+        <p className="mt-0.5 font-bold">{t.title}</p>
+        {!sub && !locked && (
+          <p className="mt-1 line-clamp-2 text-sm text-fg-muted">
+            {t.description}
+          </p>
+        )}
+      </div>
+      <div className="flex-shrink-0 text-right text-xs">
+        {done && <p className="font-bold text-cyan">+{sub?.awarded_points ?? 0}</p>}
+        {pending && <p className="text-yellow-400">in review</p>}
+        {rejected && <p className="text-fg-dim">rejected</p>}
+        {!sub && (
+          <p className={`font-bold ${locked ? "text-fg-dim" : "text-pink"}`}>
+            {locked ? "🔒" : "start →"}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+
+  if (sub) return inner;
+  if (locked && t.location_id) {
+    // Vergrendeld: doorklikken naar de locatiepagina (met kaart-uitleg).
+    return <Link href={`/team/location/${t.location_id}`}>{inner}</Link>;
+  }
+  return <Link href={`/team/challenge/${t.id}`}>{inner}</Link>;
 }
