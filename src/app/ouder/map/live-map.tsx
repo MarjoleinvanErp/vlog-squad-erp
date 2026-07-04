@@ -34,11 +34,19 @@ type Position = {
   updated_at: string;
 };
 
+type Visit = {
+  team_id: string;
+  location_id: string;
+  order_position: number;
+  arrived_at: string;
+};
+
 export function LiveMap(props: {
   center: [number, number];
   teams: Team[];
   locations: Location[];
   initialPositions: Position[];
+  initialVisits: Visit[];
 }) {
   return <Inner {...props} />;
 }

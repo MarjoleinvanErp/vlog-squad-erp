@@ -46,13 +46,19 @@ export default async function OuderMapPage() {
   }>;
 
   const teamIds = teams.map((t) => t.id);
-  const { data: positionsData } =
+  const [{ data: positionsData }, { data: visitsData }] =
     teamIds.length > 0
-      ? await sb
-          .from("team_locations")
-          .select("team_id, lat, lng, accuracy, updated_at")
-          .in("team_id", teamIds)
-      : { data: [] };
+      ? await Promise.all([
+          sb
+            .from("team_locations")
+            .select("team_id, lat, lng, accuracy, updated_at")
+            .in("team_id", teamIds),
+          sb
+            .from("location_visits")
+            .select("team_id, location_id, order_position, arrived_at")
+            .in("team_id", teamIds),
+        ])
+      : [{ data: [] }, { data: [] }];
 
   const positions = (positionsData ?? []) as Array<{
     team_id: string;
@@ -60,6 +66,13 @@ export default async function OuderMapPage() {
     lng: number;
     accuracy: number | null;
     updated_at: string;
+  }>;
+
+  const visits = (visitsData ?? []) as Array<{
+    team_id: string;
+    location_id: string;
+    order_position: number;
+    arrived_at: string;
   }>;
 
   const center: [number, number] =
@@ -92,6 +105,7 @@ export default async function OuderMapPage() {
           teams={teams}
           locations={locations}
           initialPositions={positions}
+          initialVisits={visits}
         />
       </div>
     </main>

@@ -89,6 +89,9 @@ export default async function OuderDashboardPage() {
     { data: incidentsRaw },
     { data: positionsRaw },
     { data: broadcastsRaw },
+    { data: reviewedRaw },
+    { data: locationsForTotal },
+    { data: tasksForTotal },
   ] = await Promise.all([
     teamIds.length > 0
       ? sb
@@ -133,6 +136,22 @@ export default async function OuderDashboardPage() {
       .eq("event_id", eventId)
       .order("created_at", { ascending: false })
       .limit(20),
+    teamIds.length > 0
+      ? sb
+          .from("submissions")
+          .select(
+            "id, team_id, status, awarded_points, reviewed_by, reviewed_at, tasks(title, type)"
+          )
+          .in("team_id", teamIds)
+          .neq("status", "pending")
+          .order("reviewed_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    sb.from("locations").select("id").eq("event_id", eventId),
+    sb
+      .from("tasks")
+      .select("id")
+      .eq("event_id", eventId)
+      .neq("type", "arrival"),
   ]);
 
   type PendingRow = {
@@ -172,6 +191,38 @@ export default async function OuderDashboardPage() {
       v.team_id,
       (likesByTeam.get(v.team_id) ?? 0) + v.bonus_awarded
     );
+  }
+
+  type ReviewedRow = {
+    id: string;
+    team_id: string;
+    status: "approved" | "rejected";
+    awarded_points: number | null;
+    reviewed_by: string | null;
+    reviewed_at: string | null;
+    tasks:
+      | { title: string; type: keyof typeof TYPE_LABEL }
+      | { title: string; type: keyof typeof TYPE_LABEL }[]
+      | null;
+  };
+  const reviewed = ((reviewedRaw ?? []) as unknown as ReviewedRow[]).map(
+    (r) => ({
+      ...r,
+      task: Array.isArray(r.tasks) ? r.tasks[0] ?? null : r.tasks,
+    })
+  );
+
+  // Voortgang per team: bezochte locaties + gedane quests (excl. arrival).
+  const totalLocations = (locationsForTotal ?? []).length;
+  const totalTasks = (tasksForTotal ?? []).length;
+  const visitCountByTeam = new Map<string, number>();
+  for (const v of (visitsForScore ?? []) as Array<{ team_id: string }>) {
+    visitCountByTeam.set(v.team_id, (visitCountByTeam.get(v.team_id) ?? 0) + 1);
+  }
+  const doneCountByTeam = new Map<string, number>();
+  for (const s of [...pending, ...reviewed]) {
+    if (s.task?.type === "arrival") continue;
+    doneCountByTeam.set(s.team_id, (doneCountByTeam.get(s.team_id) ?? 0) + 1);
   }
 
   const ranking = teams
@@ -441,6 +492,75 @@ export default async function OuderDashboardPage() {
         )}
       </section>
 
+      <section className="rounded-3xl border border-border bg-bg-card p-5">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
+            Al beoordeeld
+          </h2>
+          <span className="text-sm font-bold text-fg-muted">
+            {reviewed.length}
+          </span>
+        </div>
+        {reviewed.length === 0 ? (
+          <p className="mt-3 text-sm text-fg-muted">
+            Nog niets beoordeeld.
+          </p>
+        ) : (
+          <ul className="mt-4 flex flex-col gap-2">
+            {reviewed.map((r) => {
+              const t = teamById.get(r.team_id);
+              if (!t || !r.task) return null;
+              return (
+                <li key={r.id}>
+                  <Link
+                    href={`/ouder/submission/${r.id}`}
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-bg-elev p-3 transition hover:border-cyan"
+                  >
+                    <span
+                      className={`w-14 flex-shrink-0 text-center text-sm font-bold ${
+                        r.status === "approved" ? "text-cyan" : "text-fg-dim"
+                      }`}
+                    >
+                      {r.status === "approved"
+                        ? `+${r.awarded_points ?? 0}`
+                        : "✗"}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="truncate text-sm font-bold"
+                          style={{ color: t.color }}
+                        >
+                          @{t.name}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-widest ${TYPE_COLOR[r.task.type]}`}
+                        >
+                          · {TYPE_LABEL[r.task.type]}
+                        </span>
+                      </div>
+                      <p className="truncate text-sm">{r.task.title}</p>
+                    </div>
+                    <span className="flex-shrink-0 text-right text-[10px] text-fg-muted">
+                      {(r.reviewed_by ?? "").trim() || "ouder"}
+                      {r.reviewed_at && (
+                        <>
+                          <br />
+                          {new Date(r.reviewed_at).toLocaleTimeString("nl-NL", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
       <BroadcastSection recent={recentBroadcasts} />
 
       <section className="rounded-3xl border border-border bg-bg-card p-5">
@@ -479,12 +599,19 @@ export default async function OuderDashboardPage() {
                     style={{ background: s.color }}
                   />
                 )}
-                <span
-                  className="min-w-0 flex-1 truncate text-sm font-bold"
-                  style={{ color: s.color }}
-                >
-                  @{s.name}
-                </span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="truncate text-sm font-bold"
+                    style={{ color: s.color }}
+                  >
+                    @{s.name}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-widest text-fg-muted">
+                    📍 {visitCountByTeam.get(s.id) ?? 0}/{totalLocations}{" "}
+                    locaties · ✅ {doneCountByTeam.get(s.id) ?? 0}/{totalTasks}{" "}
+                    quests
+                  </p>
+                </div>
                 <span className="text-base font-bold text-pink">{s.likes}</span>
               </li>
             ))}
