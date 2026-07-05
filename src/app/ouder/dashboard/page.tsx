@@ -695,10 +695,11 @@ export default async function OuderDashboardPage() {
         ) : (
           <ol className="mt-4 flex flex-col gap-2">
             {ranking.map((s, i) => (
-              <li
-                key={s.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-bg-elev p-3"
-              >
+              <li key={s.id}>
+                <Link
+                  href={`/ouder/team/${s.id}`}
+                  className="flex items-center gap-3 rounded-xl border border-border bg-bg-elev p-3 transition hover:border-cyan"
+                >
                 <span className="w-5 text-center text-sm font-bold text-fg-muted">
                   {i + 1}
                 </span>
@@ -742,6 +743,7 @@ export default async function OuderDashboardPage() {
                     {questPointsByTeam.get(s.id) ?? 0}
                   </p>
                 </div>
+                </Link>
               </li>
             ))}
           </ol>
