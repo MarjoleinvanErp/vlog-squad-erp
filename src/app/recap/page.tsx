@@ -400,27 +400,35 @@ function TeamSection({
                     s.photo_urls.length === 1 ? "grid-cols-1" : "grid-cols-2"
                   }`}
                 >
-                  {s.photo_urls.map((url) =>
-                    isVideoUrl(url) ? (
-                      <video
-                        key={url}
-                        src={url}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        className="w-full rounded-2xl bg-black"
-                      />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        key={url}
-                        src={url}
-                        alt={task?.title ?? "Inzending"}
-                        loading="lazy"
-                        className="w-full rounded-2xl object-cover"
-                      />
-                    )
-                  )}
+                  {s.photo_urls.map((url) => (
+                    <div key={url} className="relative">
+                      {isVideoUrl(url) ? (
+                        <video
+                          src={url}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="w-full rounded-2xl bg-black"
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={url}
+                          alt={task?.title ?? "Inzending"}
+                          loading="lazy"
+                          className="w-full rounded-2xl object-cover"
+                        />
+                      )}
+                      <a
+                        href={`${url}?download`}
+                        aria-label="Download dit bestand"
+                        title="Download"
+                        className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-base text-white backdrop-blur transition hover:bg-pink"
+                      >
+                        ⬇
+                      </a>
+                    </div>
+                  ))}
                 </div>
               )}
 

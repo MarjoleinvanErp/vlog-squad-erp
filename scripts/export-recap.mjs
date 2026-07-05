@@ -203,9 +203,10 @@ function formatTimeNL(iso) {
 function mediaTag(url, title) {
   const src = localPath.get(url);
   if (!src) return "";
-  return isVideo(url)
+  const tag = isVideo(url)
     ? `<video src="${src}" controls playsinline preload="metadata"></video>`
     : `<img src="${src}" alt="${escapeHtml(title)}" loading="lazy">`;
+  return `<div class="media-item">${tag}<a class="dl" href="${src}" download title="Download">⬇</a></div>`;
 }
 
 function badge(s) {
@@ -365,6 +366,9 @@ const html = `<!doctype html>
   .media { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
   .media.single { grid-template-columns: 1fr; }
   .media img, .media video { width: 100%; border-radius: 1rem; display: block; background: #000; }
+  .media-item { position: relative; }
+  .media-item .dl { position: absolute; top: 0.5rem; right: 0.5rem; width: 2.25rem; height: 2.25rem; display: flex; align-items: center; justify-content: center; border-radius: 9999px; background: rgba(0,0,0,0.7); color: #fff; text-decoration: none; font-size: 1rem; }
+  .media-item .dl:hover { background: var(--pink); }
   .answer { background: var(--elev); border: 1px solid var(--border); border-radius: 1rem; padding: 0.75rem 1rem; font-size: 0.9rem; font-style: italic; }
   .task-desc { color: var(--muted); font-size: 0.85rem; white-space: pre-line; }
   .route { background: var(--card); border: 1px solid var(--border); border-radius: 1.5rem; padding: 1rem; }
