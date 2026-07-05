@@ -9,6 +9,7 @@ import { OuderPushToggle } from "./push-toggle";
 import { AnnounceSection, type EventRally } from "./announce-section";
 import { OuderPushBanner } from "./push-banner";
 import { BroadcastSection, type RecentBroadcast } from "./broadcast-section";
+import { LiveMap } from "../map/live-map";
 
 const TYPE_LABEL = {
   photo: "Drop",
@@ -55,6 +56,8 @@ export default async function OuderDashboardPage() {
     rally_lat?: number | null;
     rally_lng?: number | null;
     paused_at?: string | null;
+    start_lat?: number | null;
+    start_lng?: number | null;
   };
   const rally: EventRally = {
     state:
@@ -113,7 +116,7 @@ export default async function OuderDashboardPage() {
     teamIds.length > 0
       ? sb
           .from("location_visits")
-          .select("team_id, bonus_awarded")
+          .select("team_id, location_id, order_position, arrived_at, bonus_awarded")
           .in("team_id", teamIds)
       : Promise.resolve({ data: [] }),
     teamIds.length > 0
@@ -127,7 +130,7 @@ export default async function OuderDashboardPage() {
     teamIds.length > 0
       ? sb
           .from("team_locations")
-          .select("team_id, updated_at")
+          .select("team_id, lat, lng, accuracy, updated_at")
           .in("team_id", teamIds)
       : Promise.resolve({ data: [] }),
     sb
@@ -140,13 +143,16 @@ export default async function OuderDashboardPage() {
       ? sb
           .from("submissions")
           .select(
-            "id, team_id, status, awarded_points, reviewed_by, reviewed_at, tasks(title, type)"
+            "id, team_id, task_id, status, awarded_points, reviewed_by, reviewed_at, tasks(title, type, sort_order)"
           )
           .in("team_id", teamIds)
           .neq("status", "pending")
           .order("reviewed_at", { ascending: false })
       : Promise.resolve({ data: [] }),
-    sb.from("locations").select("id").eq("event_id", eventId),
+    sb
+      .from("locations")
+      .select("id, name, icon, lat, lng, radius_meters")
+      .eq("event_id", eventId),
     sb
       .from("tasks")
       .select("id")
@@ -173,36 +179,45 @@ export default async function OuderDashboardPage() {
     task: Array.isArray(r.tasks) ? r.tasks[0] ?? null : r.tasks,
   }));
 
-  const likesByTeam = new Map<string, number>();
+  // Score-opbouw: quest-punten en locatie-punten apart bijhouden.
+  const questPointsByTeam = new Map<string, number>();
   for (const s of (subsForScore ?? []) as Array<{
     team_id: string;
     awarded_points: number | null;
   }>) {
-    likesByTeam.set(
+    questPointsByTeam.set(
       s.team_id,
-      (likesByTeam.get(s.team_id) ?? 0) + (s.awarded_points ?? 0)
+      (questPointsByTeam.get(s.team_id) ?? 0) + (s.awarded_points ?? 0)
     );
   }
+  const locationPointsByTeam = new Map<string, number>();
   for (const v of (visitsForScore ?? []) as Array<{
     team_id: string;
     bonus_awarded: number;
   }>) {
-    likesByTeam.set(
+    locationPointsByTeam.set(
       v.team_id,
-      (likesByTeam.get(v.team_id) ?? 0) + v.bonus_awarded
+      (locationPointsByTeam.get(v.team_id) ?? 0) + v.bonus_awarded
     );
   }
+  const likesByTeam = new Map<string, number>(
+    teams.map((t) => [
+      t.id,
+      (questPointsByTeam.get(t.id) ?? 0) + (locationPointsByTeam.get(t.id) ?? 0),
+    ])
+  );
 
   type ReviewedRow = {
     id: string;
     team_id: string;
+    task_id: string;
     status: "approved" | "rejected";
     awarded_points: number | null;
     reviewed_by: string | null;
     reviewed_at: string | null;
     tasks:
-      | { title: string; type: keyof typeof TYPE_LABEL }
-      | { title: string; type: keyof typeof TYPE_LABEL }[]
+      | { title: string; type: keyof typeof TYPE_LABEL; sort_order: number }
+      | { title: string; type: keyof typeof TYPE_LABEL; sort_order: number }[]
       | null;
   };
   const reviewed = ((reviewedRaw ?? []) as unknown as ReviewedRow[]).map(
@@ -211,6 +226,24 @@ export default async function OuderDashboardPage() {
       task: Array.isArray(r.tasks) ? r.tasks[0] ?? null : r.tasks,
     })
   );
+
+  // Beoordeelde inzendingen gegroepeerd per quest, zodat je teams naast
+  // elkaar kunt vergelijken. Meest recent beoordeelde quest bovenaan.
+  type ReviewedEntry = (typeof reviewed)[number];
+  const reviewedByTask = new Map<
+    string,
+    { title: string; type: keyof typeof TYPE_LABEL; entries: ReviewedEntry[] }
+  >();
+  for (const r of reviewed) {
+    if (!r.task || r.task.type === "arrival") continue;
+    const group = reviewedByTask.get(r.task_id) ?? {
+      title: r.task.title,
+      type: r.task.type,
+      entries: [],
+    };
+    group.entries.push(r);
+    reviewedByTask.set(r.task_id, group);
+  }
 
   // Voortgang per team: bezochte locaties + gedane quests (excl. arrival).
   const totalLocations = (locationsForTotal ?? []).length;
@@ -241,8 +274,32 @@ export default async function OuderDashboardPage() {
 
   const positions = (positionsRaw ?? []) as Array<{
     team_id: string;
+    lat: number;
+    lng: number;
+    accuracy: number | null;
     updated_at: string;
   }>;
+
+  const mapLocations = (locationsForTotal ?? []) as Array<{
+    id: string;
+    name: string;
+    icon: string | null;
+    lat: number;
+    lng: number;
+    radius_meters: number;
+  }>;
+  const mapVisits = (visitsForScore ?? []) as Array<{
+    team_id: string;
+    location_id: string;
+    order_position: number;
+    arrived_at: string;
+  }>;
+  const mapCenter: [number, number] =
+    event.start_lat != null && event.start_lng != null
+      ? [event.start_lat, event.start_lng]
+      : mapLocations.length > 0
+        ? [mapLocations[0].lat, mapLocations[0].lng]
+        : [51.5957, 5.6017];
   const recentBroadcasts: RecentBroadcast[] = (
     (broadcastsRaw ?? []) as Array<{
       id: string;
@@ -305,6 +362,29 @@ export default async function OuderDashboardPage() {
       </header>
 
       <OuderPushBanner />
+
+      <section className="overflow-hidden rounded-3xl border border-border bg-bg-card">
+        <div className="flex items-center justify-between px-5 py-3">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
+            Live map
+          </h2>
+          <Link
+            href="/ouder/map"
+            className="text-xs font-bold text-cyan hover:underline"
+          >
+            volledig scherm →
+          </Link>
+        </div>
+        <div className="h-72 w-full">
+          <LiveMap
+            center={mapCenter}
+            teams={teams}
+            locations={mapLocations}
+            initialPositions={positions}
+            initialVisits={mapVisits}
+          />
+        </div>
+      </section>
 
       <section
         className={`rounded-3xl border p-5 ${
@@ -495,70 +575,107 @@ export default async function OuderDashboardPage() {
       <section className="rounded-3xl border border-border bg-bg-card p-5">
         <div className="flex items-baseline justify-between">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
-            Al beoordeeld
+            Al beoordeeld — per quest
           </h2>
           <span className="text-sm font-bold text-fg-muted">
-            {reviewed.length}
+            {reviewed.length} reviews
           </span>
         </div>
-        {reviewed.length === 0 ? (
-          <p className="mt-3 text-sm text-fg-muted">
-            Nog niets beoordeeld.
-          </p>
+        {reviewedByTask.size === 0 ? (
+          <p className="mt-3 text-sm text-fg-muted">Nog niets beoordeeld.</p>
         ) : (
-          <ul className="mt-4 flex flex-col gap-2">
-            {reviewed.map((r) => {
-              const t = teamById.get(r.team_id);
-              if (!t || !r.task) return null;
-              return (
-                <li key={r.id}>
-                  <Link
-                    href={`/ouder/submission/${r.id}`}
-                    className="flex items-center gap-3 rounded-2xl border border-border bg-bg-elev p-3 transition hover:border-cyan"
-                  >
+          <div className="mt-4 flex flex-col gap-2">
+            {[...reviewedByTask.entries()].map(([taskId, group]) => (
+              <details
+                key={taskId}
+                className="group rounded-2xl border border-border bg-bg-elev"
+              >
+                <summary className="flex cursor-pointer list-none items-center gap-3 p-3 [&::-webkit-details-marker]:hidden">
+                  <div className="min-w-0 flex-1">
                     <span
-                      className={`w-14 flex-shrink-0 text-center text-sm font-bold ${
-                        r.status === "approved" ? "text-cyan" : "text-fg-dim"
-                      }`}
+                      className={`text-[10px] font-bold uppercase tracking-widest ${TYPE_COLOR[group.type]}`}
                     >
-                      {r.status === "approved"
-                        ? `+${r.awarded_points ?? 0}`
-                        : "✗"}
+                      {TYPE_LABEL[group.type]}
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-bold">{group.title}</p>
+                  </div>
+                  <div className="flex flex-shrink-0 items-center gap-1.5">
+                    {teams.map((t) => {
+                      const entry = group.entries.find(
+                        (e) => e.team_id === t.id
+                      );
+                      return (
                         <span
-                          className="truncate text-sm font-bold"
-                          style={{ color: t.color }}
+                          key={t.id}
+                          className="rounded-full border px-2 py-0.5 text-[10px] font-bold"
+                          style={{
+                            borderColor: t.color,
+                            color: entry ? t.color : "var(--color-fg-dim)",
+                            opacity: entry ? 1 : 0.4,
+                          }}
                         >
-                          @{t.name}
+                          {entry
+                            ? entry.status === "approved"
+                              ? `+${entry.awarded_points ?? 0}`
+                              : "✗"
+                            : "–"}
                         </span>
-                        <span
-                          className={`text-[10px] font-bold uppercase tracking-widest ${TYPE_COLOR[r.task.type]}`}
+                      );
+                    })}
+                  </div>
+                  <span className="text-fg-muted transition group-open:rotate-180">
+                    ▾
+                  </span>
+                </summary>
+                <ul className="flex flex-col gap-1 border-t border-border p-3">
+                  {group.entries.map((r) => {
+                    const t = teamById.get(r.team_id);
+                    if (!t) return null;
+                    return (
+                      <li key={r.id}>
+                        <Link
+                          href={`/ouder/submission/${r.id}`}
+                          className="flex items-center gap-3 rounded-xl px-2 py-1.5 transition hover:bg-bg-card"
                         >
-                          · {TYPE_LABEL[r.task.type]}
-                        </span>
-                      </div>
-                      <p className="truncate text-sm">{r.task.title}</p>
-                    </div>
-                    <span className="flex-shrink-0 text-right text-[10px] text-fg-muted">
-                      {(r.reviewed_by ?? "").trim() || "ouder"}
-                      {r.reviewed_at && (
-                        <>
-                          <br />
-                          {new Date(r.reviewed_at).toLocaleTimeString("nl-NL", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            timeZone: "Europe/Amsterdam",
-                          })}
-                        </>
-                      )}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                          <span
+                            className="w-24 flex-shrink-0 truncate text-xs font-bold"
+                            style={{ color: t.color }}
+                          >
+                            @{t.name}
+                          </span>
+                          <span
+                            className={`w-10 flex-shrink-0 text-sm font-bold ${
+                              r.status === "approved"
+                                ? "text-cyan"
+                                : "text-fg-dim"
+                            }`}
+                          >
+                            {r.status === "approved"
+                              ? `+${r.awarded_points ?? 0}`
+                              : "✗"}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-xs text-fg-muted">
+                            door {(r.reviewed_by ?? "").trim() || "ouder"}
+                            {r.reviewed_at
+                              ? ` · ${new Date(r.reviewed_at).toLocaleTimeString(
+                                  "nl-NL",
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    timeZone: "Europe/Amsterdam",
+                                  }
+                                )}`
+                              : ""}
+                          </span>
+                          <span className="text-cyan">→</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </details>
+            ))}
+          </div>
         )}
       </section>
 
@@ -566,7 +683,7 @@ export default async function OuderDashboardPage() {
 
       <section className="rounded-3xl border border-border bg-bg-card p-5">
         <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
-          Live ranking
+          Scores — opbouw per team
         </h2>
         {ranking.length === 0 ? (
           <p className="mt-3 text-sm text-fg-muted">Geen squads.</p>
@@ -613,7 +730,13 @@ export default async function OuderDashboardPage() {
                     quests
                   </p>
                 </div>
-                <span className="text-base font-bold text-pink">{s.likes}</span>
+                <div className="flex-shrink-0 text-right">
+                  <p className="text-base font-bold text-pink">{s.likes}</p>
+                  <p className="text-[10px] text-fg-muted">
+                    📍 {locationPointsByTeam.get(s.id) ?? 0} + ✅{" "}
+                    {questPointsByTeam.get(s.id) ?? 0}
+                  </p>
+                </div>
               </li>
             ))}
           </ol>
