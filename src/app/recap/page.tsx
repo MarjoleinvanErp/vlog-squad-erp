@@ -16,11 +16,19 @@ function isVideoUrl(url: string): boolean {
   return VIDEO_EXTENSIONS.test(url);
 }
 
+type Visit = {
+  location_id: string;
+  arrived_at: string;
+  order_position: number;
+  bonus_awarded: number;
+};
+
 type TeamRecap = {
   team: TeamRow;
   members: string[];
   score: number;
   submissions: SubmissionRow[];
+  visits: Visit[];
 };
 
 export default async function RecapPage() {
@@ -82,7 +90,7 @@ export default async function RecapPage() {
 
   const recaps: TeamRecap[] = await Promise.all(
     teams.map(async (team) => {
-      const [{ data: subs }, { data: visits }, { data: members }] =
+      const [{ data: subs }, { data: visitRows }, { data: members }] =
         await Promise.all([
           sb
             .from("submissions")
@@ -91,20 +99,19 @@ export default async function RecapPage() {
             .order("submitted_at", { ascending: true }),
           sb
             .from("location_visits")
-            .select("bonus_awarded")
-            .eq("team_id", team.id),
+            .select("location_id, arrived_at, order_position, bonus_awarded")
+            .eq("team_id", team.id)
+            .order("arrived_at", { ascending: true }),
           sb.from("team_members").select("name").eq("team_id", team.id),
         ]);
 
       const submissions = (subs ?? []) as SubmissionRow[];
+      const visits = (visitRows ?? []) as Visit[];
       const score =
         submissions
           .filter((s) => s.status === "approved")
           .reduce((a, s) => a + (s.awarded_points ?? 0), 0) +
-        ((visits ?? []) as Array<{ bonus_awarded: number }>).reduce(
-          (a, v) => a + v.bonus_awarded,
-          0
-        );
+        visits.reduce((a, v) => a + v.bonus_awarded, 0);
 
       return {
         team,
@@ -113,6 +120,7 @@ export default async function RecapPage() {
         ),
         score,
         submissions,
+        visits,
       };
     })
   );
@@ -238,10 +246,54 @@ function TeamSection({
             @{team.name}
           </h2>
           <p className="text-xs uppercase tracking-widest text-fg-muted">
-            {submissions.length} posts · {recap.score} punten
+            {submissions.length} posts · {recap.visits.length} locaties ·{" "}
+            {recap.score} punten
           </p>
         </div>
       </div>
+
+      {recap.visits.length > 0 && (
+        <div className="rounded-3xl border border-border bg-bg-card p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-cyan">
+            📍 De route
+          </h3>
+          <ol className="mt-3 flex flex-col gap-1.5">
+            {recap.visits.map((v, i) => {
+              const loc = locationById.get(v.location_id);
+              return (
+                <li key={v.location_id} className="flex items-baseline gap-2 text-sm">
+                  <span className="w-5 flex-shrink-0 text-right text-xs text-fg-dim">
+                    {i + 1}.
+                  </span>
+                  <span className="w-12 flex-shrink-0 text-xs text-fg-muted">
+                    {new Intl.DateTimeFormat("nl-NL", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }).format(new Date(v.arrived_at))}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {loc ? `${loc.icon ?? "📍"} ${loc.name}` : "Onbekende plek"}
+                  </span>
+                  <span
+                    className={`flex-shrink-0 text-xs font-bold ${
+                      v.order_position === 1 ? "text-pink" : "text-fg-muted"
+                    }`}
+                  >
+                    {v.order_position === 1
+                      ? "🥇 eerste!"
+                      : v.order_position === 2
+                        ? "🥈 2e"
+                        : v.order_position === 3
+                          ? "🥉 3e"
+                          : `${v.order_position}e`}
+                    {v.bonus_awarded > 0 ? ` +${v.bonus_awarded}` : ""}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4">
         {submissions.map((s) => {

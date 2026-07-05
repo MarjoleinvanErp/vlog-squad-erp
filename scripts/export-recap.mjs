@@ -170,17 +170,18 @@ const locationById = new Map(locations.map((l) => [l.id, l]));
 const teamRecaps = teams
   .map((team) => {
     const subs = submissions.filter((s) => s.team_id === team.id);
+    const teamVisits = visits
+      .filter((v) => v.team_id === team.id)
+      .sort((a, b) => new Date(a.arrived_at) - new Date(b.arrived_at));
     const score =
       subs
         .filter((s) => s.status === "approved")
         .reduce((a, s) => a + (s.awarded_points ?? 0), 0) +
-      visits
-        .filter((v) => v.team_id === team.id)
-        .reduce((a, v) => a + v.bonus_awarded, 0);
+      teamVisits.reduce((a, v) => a + v.bonus_awarded, 0);
     const names = members
       .filter((m) => m.team_id === team.id)
       .map((m) => m.name);
-    return { team, subs, score, names };
+    return { team, subs, score, names, visits: teamVisits };
   })
   .sort((a, b) => b.score - a.score);
 
@@ -236,6 +237,34 @@ function submissionHtml(s) {
     </article>`;
 }
 
+function routeHtml(teamVisits) {
+  if (teamVisits.length === 0) return "";
+  const rows = teamVisits
+    .map((v, i) => {
+      const loc = locationById.get(v.location_id);
+      const time = new Intl.DateTimeFormat("nl-NL", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(v.arrived_at));
+      const orde =
+        v.order_position === 1
+          ? "🥇 eerste!"
+          : v.order_position === 2
+            ? "🥈 2e"
+            : v.order_position === 3
+              ? "🥉 3e"
+              : `${v.order_position}e`;
+      const bonus = v.bonus_awarded > 0 ? ` +${v.bonus_awarded}` : "";
+      return `<li><span class="num">${i + 1}.</span><span class="time">${time}</span><span class="place">${escapeHtml(loc ? `${loc.icon ?? "📍"} ${loc.name}` : "Onbekende plek")}</span><span class="orde${v.order_position === 1 ? " first" : ""}">${orde}${bonus}</span></li>`;
+    })
+    .join("\n");
+  return `
+      <div class="route">
+        <h3>📍 De route</h3>
+        <ol>${rows}</ol>
+      </div>`;
+}
+
 function teamHtml(r, rank) {
   const medal = rank === 0 ? "🏆" : rank === 1 ? "🥈" : rank === 2 ? "🥉" : `${rank + 1}`;
   const photo = r.team.team_photo_url ? localPath.get(r.team.team_photo_url) : null;
@@ -249,9 +278,10 @@ function teamHtml(r, rank) {
         <div>
           <h2 style="color:${r.team.color}">@${escapeHtml(r.team.name)}</h2>
           <p class="meta">${escapeHtml(r.names.join(" · "))}</p>
-          <p class="meta">${medal} ${r.subs.length} posts · ${r.score} punten</p>
+          <p class="meta">${medal} ${r.subs.length} posts · ${r.visits.length} locaties · ${r.score} punten</p>
         </div>
       </div>
+      ${routeHtml(r.visits)}
       ${r.subs.map(submissionHtml).join("\n")}
     </section>`;
 }
@@ -307,6 +337,15 @@ const html = `<!doctype html>
   .media img, .media video { width: 100%; border-radius: 1rem; display: block; background: #000; }
   .answer { background: var(--elev); border: 1px solid var(--border); border-radius: 1rem; padding: 0.75rem 1rem; font-size: 0.9rem; font-style: italic; }
   .task-desc { color: var(--muted); font-size: 0.85rem; white-space: pre-line; }
+  .route { background: var(--card); border: 1px solid var(--border); border-radius: 1.5rem; padding: 1rem; }
+  .route h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--cyan); }
+  .route ol { list-style: none; margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; }
+  .route li { display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.9rem; }
+  .route .num { width: 1.25rem; text-align: right; color: var(--muted); font-size: 0.75rem; flex-shrink: 0; }
+  .route .time { width: 3rem; color: var(--muted); font-size: 0.75rem; flex-shrink: 0; }
+  .route .place { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .route .orde { font-size: 0.75rem; font-weight: 700; color: var(--muted); flex-shrink: 0; }
+  .route .orde.first { color: var(--pink); }
   footer { text-align: center; color: var(--muted); font-size: 0.75rem; padding-bottom: 2rem; }
 </style>
 </head>
