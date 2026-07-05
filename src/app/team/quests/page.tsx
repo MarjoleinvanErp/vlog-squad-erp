@@ -87,13 +87,17 @@ export default async function QuestsPage() {
 
   const anywhere = tasks.filter((t) => t.location_id == null);
   const available = anywhere.filter((t) => !subByTask.has(t.id));
-  const done = anywhere.filter((t) => subByTask.has(t.id));
+  // Al ingediend: overal-quests én locatie-quests.
+  const done = tasks.filter((t) => subByTask.has(t.id));
 
+  // Alleen oppakbare locatie-quests: locatie bezocht en nog niet ingediend.
   const locationGroups = locations
+    .filter((loc) => visitedLocations.has(loc.id))
     .map((loc) => ({
       loc,
-      tasks: tasks.filter((t) => t.location_id === loc.id),
-      visited: visitedLocations.has(loc.id),
+      tasks: tasks.filter(
+        (t) => t.location_id === loc.id && !subByTask.has(t.id)
+      ),
     }))
     .filter((g) => g.tasks.length > 0);
 
@@ -104,13 +108,14 @@ export default async function QuestsPage() {
     >
       <header>
         <p className="text-xs font-semibold uppercase tracking-widest text-cyan">
-          alle challenges
+          nu te doen
         </p>
         <h1 className="mt-1 text-3xl font-bold leading-tight">
           <span className="text-gradient">Quests</span>
         </h1>
         <p className="mt-2 text-fg-muted">
-          Sommige mag je overal doen, andere pas als je op de plek bent geweest.
+          Alles wat je nu kunt doen. Bezoek plekken op de map om meer quests
+          vrij te spelen!
         </p>
       </header>
 
@@ -125,40 +130,33 @@ export default async function QuestsPage() {
         </section>
       )}
 
-      {locationGroups.map(({ loc, tasks: locTasks, visited }) => (
+      {locationGroups.map(({ loc, tasks: locTasks }) => (
         <section key={loc.id} className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-2">
             <h2 className="min-w-0 truncate text-xs font-semibold uppercase tracking-widest text-fg-muted">
               {loc.icon ?? "📍"} {loc.name}
             </h2>
-            {visited ? (
-              <span className="flex-shrink-0 rounded-full bg-cyan/15 px-2 py-0.5 text-[10px] font-bold text-cyan">
-                ✓ geweest
-              </span>
-            ) : (
-              <Link
-                href={`/team/location/${loc.id}`}
-                className="flex-shrink-0 rounded-full bg-bg-elev px-2 py-0.5 text-[10px] font-bold text-fg-muted"
-              >
-                🔒 loop er heen
-              </Link>
-            )}
+            <span className="flex-shrink-0 rounded-full bg-cyan/15 px-2 py-0.5 text-[10px] font-bold text-cyan">
+              ✓ geweest
+            </span>
           </div>
           {locTasks.map((t) => (
-            <TaskCard
-              key={t.id}
-              task={t}
-              sub={subByTask.get(t.id) ?? null}
-              locked={!visited}
-            />
+            <TaskCard key={t.id} task={t} sub={null} locked={false} />
           ))}
         </section>
       ))}
 
+      {available.length === 0 && locationGroups.length === 0 && (
+        <p className="rounded-2xl border border-border bg-bg-card p-6 text-fg-muted">
+          Alles gedaan wat nu kan — loop naar een volgende plek op de map om
+          nieuwe quests vrij te spelen! 🔥
+        </p>
+      )}
+
       {done.length > 0 && (
         <section className="flex flex-col gap-3 opacity-70">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
-            Al ingediend (overal-quests)
+            Al ingediend
           </h2>
           {done.map((t) => (
             <TaskCard
