@@ -135,6 +135,7 @@ export default async function ReviewPage({
             {new Date(sub.submitted_at).toLocaleTimeString("nl-NL", {
               hour: "2-digit",
               minute: "2-digit",
+              timeZone: "Europe/Amsterdam",
             })}
           </p>
         </div>

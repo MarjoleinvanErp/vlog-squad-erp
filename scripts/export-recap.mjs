@@ -189,7 +189,16 @@ const eventDate = new Intl.DateTimeFormat("nl-NL", {
   day: "numeric",
   month: "long",
   year: "numeric",
+  timeZone: "Europe/Amsterdam",
 }).format(new Date(event.starts_at));
+
+function formatTimeNL(iso) {
+  return new Intl.DateTimeFormat("nl-NL", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Amsterdam",
+  }).format(new Date(iso));
+}
 
 function mediaTag(url, title) {
   const src = localPath.get(url);
@@ -210,10 +219,7 @@ function badge(s) {
 function submissionHtml(s) {
   const task = taskById.get(s.task_id);
   const loc = task?.location_id ? locationById.get(task.location_id) : null;
-  const time = new Intl.DateTimeFormat("nl-NL", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(s.submitted_at));
+  const time = formatTimeNL(s.submitted_at);
   const media = (s.photo_urls ?? [])
     .map((u) => mediaTag(u, task?.title ?? "Inzending"))
     .join("\n");
@@ -242,10 +248,7 @@ function routeHtml(teamVisits) {
   const rows = teamVisits
     .map((v, i) => {
       const loc = locationById.get(v.location_id);
-      const time = new Intl.DateTimeFormat("nl-NL", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(new Date(v.arrived_at));
+      const time = formatTimeNL(v.arrived_at);
       const orde =
         v.order_position === 1
           ? "🥇 eerste!"
@@ -259,10 +262,37 @@ function routeHtml(teamVisits) {
     })
     .join("\n");
   return `
-      <div class="route">
-        <h3>📍 De route</h3>
+      <details class="route">
+        <summary>📍 De route · ${teamVisits.length} locaties <span class="chev">▾</span></summary>
         <ol>${rows}</ol>
-      </div>`;
+      </details>`;
+}
+
+function raceHtml() {
+  const all = teamRecaps
+    .flatMap((r) => r.visits.map((v) => ({ ...v, team: r.team })))
+    .sort((a, b) => new Date(a.arrived_at) - new Date(b.arrived_at));
+  if (all.length === 0) return "";
+  const rows = all
+    .map((v) => {
+      const loc = locationById.get(v.location_id);
+      const orde =
+        v.order_position === 1
+          ? "🥇 eerste!"
+          : v.order_position === 2
+            ? "🥈 2e"
+            : v.order_position === 3
+              ? "🥉 3e"
+              : `${v.order_position}e`;
+      const bonus = v.bonus_awarded > 0 ? ` +${v.bonus_awarded}` : "";
+      return `<li><span class="time">${formatTimeNL(v.arrived_at)}</span><span class="race-team" style="color:${v.team.color}">@${escapeHtml(v.team.name)}</span><span class="place">${escapeHtml(loc ? `${loc.icon ?? "📍"} ${loc.name}` : "Onbekende plek")}</span><span class="orde${v.order_position === 1 ? " first" : ""}">${orde}${bonus}</span></li>`;
+    })
+    .join("\n");
+  return `
+  <details class="route race">
+    <summary><span class="race-title">De race</span> — alle teams op tijd <span class="chev">▾</span></summary>
+    <ol>${rows}</ol>
+  </details>`;
 }
 
 function teamHtml(r, rank) {
@@ -346,6 +376,13 @@ const html = `<!doctype html>
   .route .place { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .route .orde { font-size: 0.75rem; font-weight: 700; color: var(--muted); flex-shrink: 0; }
   .route .orde.first { color: var(--pink); }
+  .route summary { cursor: pointer; list-style: none; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--cyan); font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .route summary::-webkit-details-marker { display: none; }
+  .route .chev { color: var(--muted); transition: transform 0.2s; }
+  .route[open] .chev { transform: rotate(180deg); }
+  .route summary + ol { margin-top: 0.75rem; }
+  .race .race-title { font-size: 1.25rem; text-transform: none; letter-spacing: 0; background: linear-gradient(90deg, var(--pink), var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 800; }
+  .race .race-team { width: 7rem; flex-shrink: 0; font-weight: 700; font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   footer { text-align: center; color: var(--muted); font-size: 0.75rem; padding-bottom: 2rem; }
 </style>
 </head>
@@ -361,6 +398,8 @@ const html = `<!doctype html>
     <h2><span class="gradient">Eindstand</span></h2>
     <ol class="standings">${standingsHtml}</ol>
   </section>
+
+  ${raceHtml()}
 
   ${teamRecaps.map(teamHtml).join("\n")}
 

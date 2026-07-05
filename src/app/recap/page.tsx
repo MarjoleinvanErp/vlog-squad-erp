@@ -16,6 +16,37 @@ function isVideoUrl(url: string): boolean {
   return VIDEO_EXTENSIONS.test(url);
 }
 
+function formatTimeNL(iso: string): string {
+  return new Intl.DateTimeFormat("nl-NL", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Amsterdam",
+  }).format(new Date(iso));
+}
+
+function OrderBadge({
+  visit,
+}: {
+  visit: { order_position: number; bonus_awarded: number };
+}) {
+  return (
+    <span
+      className={`flex-shrink-0 text-xs font-bold ${
+        visit.order_position === 1 ? "text-pink" : "text-fg-muted"
+      }`}
+    >
+      {visit.order_position === 1
+        ? "🥇 eerste!"
+        : visit.order_position === 2
+          ? "🥈 2e"
+          : visit.order_position === 3
+            ? "🥉 3e"
+            : `${visit.order_position}e`}
+      {visit.bonus_awarded > 0 ? ` +${visit.bonus_awarded}` : ""}
+    </span>
+  );
+}
+
 type Visit = {
   location_id: string;
   arrived_at: string;
@@ -127,10 +158,19 @@ export default async function RecapPage() {
 
   recaps.sort((a, b) => b.score - a.score);
 
+  // Alle bezoeken van alle teams door elkaar, op tijdsvolgorde.
+  const allVisits = recaps
+    .flatMap((r) => r.visits.map((v) => ({ ...v, team: r.team })))
+    .sort(
+      (a, b) =>
+        new Date(a.arrived_at).getTime() - new Date(b.arrived_at).getTime()
+    );
+
   const eventDate = new Intl.DateTimeFormat("nl-NL", {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "Europe/Amsterdam",
   }).format(new Date(event.starts_at));
 
   return (
@@ -197,6 +237,44 @@ export default async function RecapPage() {
         </ol>
       </section>
 
+      {allVisits.length > 0 && (
+        <details className="group rounded-3xl border border-border bg-bg-card p-5">
+          <summary className="flex cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden">
+            <h2 className="text-2xl font-bold">
+              <span className="text-gradient">De race</span>
+            </h2>
+            <span className="text-sm font-bold text-fg-muted transition group-open:rotate-180">
+              alle teams op tijd ▾
+            </span>
+          </summary>
+          <ol className="mt-4 flex flex-col gap-1.5">
+            {allVisits.map((v) => {
+              const loc = locationById.get(v.location_id);
+              return (
+                <li
+                  key={`${v.team.id}-${v.location_id}`}
+                  className="flex items-baseline gap-2 text-sm"
+                >
+                  <span className="w-12 flex-shrink-0 text-xs text-fg-muted">
+                    {formatTimeNL(v.arrived_at)}
+                  </span>
+                  <span
+                    className="w-24 flex-shrink-0 truncate text-xs font-bold sm:w-28"
+                    style={{ color: v.team.color }}
+                  >
+                    @{v.team.name}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {loc ? `${loc.icon ?? "📍"} ${loc.name}` : "Onbekende plek"}
+                  </span>
+                  <OrderBadge visit={v} />
+                </li>
+              );
+            })}
+          </ol>
+        </details>
+      )}
+
       {recaps.map((r) => (
         <TeamSection
           key={r.team.id}
@@ -253,10 +331,15 @@ function TeamSection({
       </div>
 
       {recap.visits.length > 0 && (
-        <div className="rounded-3xl border border-border bg-bg-card p-4">
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-cyan">
-            📍 De route
-          </h3>
+        <details className="group rounded-3xl border border-border bg-bg-card p-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between text-xs font-semibold uppercase tracking-widest text-cyan [&::-webkit-details-marker]:hidden">
+            <span>
+              📍 De route · {recap.visits.length} locaties
+            </span>
+            <span className="text-fg-muted transition group-open:rotate-180">
+              ▾
+            </span>
+          </summary>
           <ol className="mt-3 flex flex-col gap-1.5">
             {recap.visits.map((v, i) => {
               const loc = locationById.get(v.location_id);
@@ -266,33 +349,17 @@ function TeamSection({
                     {i + 1}.
                   </span>
                   <span className="w-12 flex-shrink-0 text-xs text-fg-muted">
-                    {new Intl.DateTimeFormat("nl-NL", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }).format(new Date(v.arrived_at))}
+                    {formatTimeNL(v.arrived_at)}
                   </span>
                   <span className="min-w-0 flex-1 truncate">
                     {loc ? `${loc.icon ?? "📍"} ${loc.name}` : "Onbekende plek"}
                   </span>
-                  <span
-                    className={`flex-shrink-0 text-xs font-bold ${
-                      v.order_position === 1 ? "text-pink" : "text-fg-muted"
-                    }`}
-                  >
-                    {v.order_position === 1
-                      ? "🥇 eerste!"
-                      : v.order_position === 2
-                        ? "🥈 2e"
-                        : v.order_position === 3
-                          ? "🥉 3e"
-                          : `${v.order_position}e`}
-                    {v.bonus_awarded > 0 ? ` +${v.bonus_awarded}` : ""}
-                  </span>
+                  <OrderBadge visit={v} />
                 </li>
               );
             })}
           </ol>
-        </div>
+        </details>
       )}
 
       <div className="flex flex-col gap-4">
@@ -314,6 +381,7 @@ function TeamSection({
                     {new Intl.DateTimeFormat("nl-NL", {
                       hour: "2-digit",
                       minute: "2-digit",
+                      timeZone: "Europe/Amsterdam",
                     }).format(new Date(s.submitted_at))}
                   </p>
                 </div>

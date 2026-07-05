@@ -549,6 +549,7 @@ export default async function OuderDashboardPage() {
                           {new Date(r.reviewed_at).toLocaleTimeString("nl-NL", {
                             hour: "2-digit",
                             minute: "2-digit",
+                            timeZone: "Europe/Amsterdam",
                           })}
                         </>
                       )}
