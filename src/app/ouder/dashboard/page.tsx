@@ -336,7 +336,7 @@ export default async function OuderDashboardPage() {
     );
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-6 pb-10 pt-[calc(2rem+var(--st))]">
+    <main className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-6 px-6 pb-10 pt-[calc(2rem+var(--st))]">
       <LiveRefresh />
 
       <header className="flex items-center justify-between">
@@ -363,6 +363,9 @@ export default async function OuderDashboardPage() {
 
       <OuderPushBanner />
 
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      <div className="flex w-full min-w-0 flex-col gap-6 lg:flex-1">
+
       <section className="overflow-hidden rounded-3xl border border-border bg-bg-card">
         <div className="flex items-center justify-between px-5 py-3">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
@@ -384,18 +387,6 @@ export default async function OuderDashboardPage() {
             initialVisits={mapVisits}
           />
         </div>
-      </section>
-
-      <section
-        className={`rounded-3xl border p-5 ${
-          rally.state === "paused"
-            ? "border-pink/50 bg-pink/5"
-            : rally.state === "finished"
-              ? "border-cyan/50 bg-cyan/5"
-              : "border-border bg-bg-card"
-        }`}
-      >
-        <AnnounceSection event={rally} />
       </section>
 
       {(sosIncidents.length > 0 || inactiveSquads.length > 0) && (
@@ -679,7 +670,21 @@ export default async function OuderDashboardPage() {
         )}
       </section>
 
-      <BroadcastSection recent={recentBroadcasts} />
+      </div>
+
+      <div className="flex w-full flex-col gap-6 lg:w-96 lg:flex-shrink-0">
+
+      <section
+        className={`rounded-3xl border p-5 ${
+          rally.state === "paused"
+            ? "border-pink/50 bg-pink/5"
+            : rally.state === "finished"
+              ? "border-cyan/50 bg-cyan/5"
+              : "border-border bg-bg-card"
+        }`}
+      >
+        <AnnounceSection event={rally} />
+      </section>
 
       <section className="rounded-3xl border border-border bg-bg-card p-5">
         <h2 className="text-xs font-semibold uppercase tracking-widest text-fg-muted">
@@ -742,6 +747,11 @@ export default async function OuderDashboardPage() {
           </ol>
         )}
       </section>
+
+      <BroadcastSection recent={recentBroadcasts} />
+
+      </div>
+      </div>
     </main>
   );
 }
